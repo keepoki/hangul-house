@@ -9,7 +9,7 @@ function boot(){
   const source=original.replace(/^export\s+/gm,'').replace("import('./workshop.js')",'Promise.resolve({createWorkshop:()=>fakeWorkshop})');
   const init=new Function('document','addEventListener','requestAnimationFrame','scrollY','scrollTo','location','setTimeout','clearTimeout','fakeWorkshop','console',source+'\nreturn initInterface();');
   const ui=init(f.document,f.window.addEventListener.bind(f.window),fn=>{fn();return 1;},350,f.scrollTo,f.location,f.time,f.clear,workshop,{warn(){}});
-  const controller={goTo:p=>calls.push(['go',p]),refresh:()=>calls.push('refresh'),changeZoom:p=>calls.push(['zoom',p]),setZoom:p=>calls.push(['setZoom',p]),toggleLighting:()=>calls.push('light'),next:()=>calls.push('next')};
+  const controller={goTo:p=>calls.push(['go',p]),refresh:()=>calls.push('refresh'),pause:()=>calls.push('gallery-pause'),resume:()=>calls.push('gallery-resume'),changeZoom:p=>calls.push(['zoom',p]),setZoom:p=>calls.push(['setZoom',p]),toggleLighting:()=>calls.push('light'),next:()=>calls.push('next')};
   return{f,ui,calls,controller};
 }
 test('navigation and zoom controls are wired to the 3D controller',()=>{
@@ -32,10 +32,12 @@ test('a text-reading visitor is not forced back into the 3D view when loading fi
   f.fire(f.$('resume-gallery'),'click');assert.equal(f.document.documentElement.dataset.view,'3d');
 });
 test('the workshop opens within the page and restores focus and scrolling when closed',async()=>{
-  const {f,calls}=boot();f.document.body.style.overflow='auto';const opener=f.$('open-workshop');
+  const {f,calls,ui,controller}=boot();ui.attach(controller);f.document.body.style.overflow='auto';const opener=f.$('open-workshop');
   f.fire(opener,'click');await Promise.resolve();await Promise.resolve();
   assert.equal(f.$('workshop-dialog').open,true);assert.equal(f.document.body.style.overflow,'hidden');assert.ok(calls.includes('workshop-open'));
+  assert.ok(calls.includes('gallery-pause'));
   f.fire(f.$('workshop-close'),'click');assert.equal(f.$('workshop-dialog').open,false);assert.equal(f.document.body.style.overflow,'auto');assert.equal(opener.focused,true);assert.ok(calls.includes('workshop-pause'));
+  assert.ok(calls.includes('gallery-resume'));
 });
 test('a failed gallery import is caught by the inline bootstrap',async()=>{
   const html=await readFile(new URL('../dist/index.html',import.meta.url),'utf8'),f=fixture();let failed=false;

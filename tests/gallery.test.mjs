@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import * as Three from '../dist/assets/three.module.js';
-import { sampleTour, chapterAt, tourStops as stops, tourGlyphs } from '../dist/camera-tour.js';
+import { sampleTour, fitTourPose, chapterAt, tourStops as stops, tourGlyphs } from '../dist/camera-tour.js';
 import { exhibitionSites } from '../dist/exhibition-layout.js';
 import { buildHangulBuilding } from '../dist/hangul-building.js';
 import { chapters } from '../dist/exhibition-content.js';
 import { createEnvironment, createReflectingPool } from '../dist/environment.js';
+import { batchStaticBoxes, detailCount, pickVisibleArtwork } from '../dist/scene-quality.js';
 
 // Construct the actual scene with a non-GPU renderer so camera framing can be checked.
 const source=(await readFile(new URL('../dist/gallery.js',import.meta.url),'utf8')).replace(/^import[^;]+;\s*/gm,'').replace(/^export\s+/gm,'');
@@ -19,16 +20,16 @@ function element(id='') {
 const context={createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){},fillRect(){},beginPath(){},moveTo(){},bezierCurveTo(){},stroke(){},fillText(){}};
 const canvas=()=>({width:0,height:0,getContext:()=>context});
 const document={getElementById:element,querySelector:element,querySelectorAll:()=>[],createElement:canvas,addEventListener(){},hidden:false,documentElement:{scrollHeight:6300,dataset:{view:'3d'}}};
-let renderedScene,renderedCamera,lastScroll,clock=0;
+let renderedScene,renderedCamera,lastScroll,clock=0,renderCount=0;
 class Renderer {
   constructor(){this.domElement=element('canvas');this.shadowMap={};}
   setClearColor(){}setPixelRatio(){}setSize(){}
-  render(s,c){s.updateMatrixWorld(true);c.updateMatrixWorld(true);renderedScene=s;renderedCamera=c;}
+  render(s,c){s.updateMatrixWorld(true);c.updateMatrixWorld(true);renderedScene=s;renderedCamera=c;renderCount++;}
 }
 const THREE={...Three,WebGLRenderer:Renderer},errors=[];
 const media={matches:false,addEventListener(){}};
-const boot=new Function('THREE','sampleTour','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nconst controls=initGallery();return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};');
-const app=boot(THREE,sampleTour,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,chapters,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
+const boot=new Function('THREE','sampleTour','fitTourPose','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','batchStaticBoxes','detailCount','pickVisibleArtwork','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nconst controls=initGallery();return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};');
+const app=boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
 function sample(p){clock+=17;return app.sample(p,clock);}
 function settle(){for(let i=0;i<100;i++){clock+=17;app.tick(clock);}}
 function artwork(char){let found;renderedScene.traverse(o=>{if(o.userData.artGlyph===char&&o.isGroup)found=o;});return found;}
@@ -55,7 +56,7 @@ test('all six independent installations have a complete, centered close-up',()=>
 });
 test('mobile close-ups fit all six complete sculptures',()=>{
   for(let i=0;i<tourGlyphs.length;i++){
-    const pose=sampleTour(stops[i+1],{mobile:true});
+    const pose=fitTourPose(sampleTour(stops[i+1],{mobile:true}),new Three.Box3().setFromObject(artwork(tourGlyphs[i])),390/500);
     const camera=new Three.PerspectiveCamera(pose.fov,390/500,.1,150);
     camera.position.fromArray(pose.position);camera.lookAt(...pose.target);camera.updateMatrixWorld(true);
     const bounds=projectedBounds(artwork(tourGlyphs[i]),camera);
@@ -77,11 +78,46 @@ test('zoom buttons dolly closer, respect limits and restore the current view',()
   app.controls.setZoom(1);settle();
 });
 test('clicking a sculpture navigates to its close-up',()=>{
-  sample(.075);
+  sample(stops[1]);
   const bar=artwork('ㄱ').children[0];
   const point=new Three.Box3().setFromObject(bar).getCenter(new Three.Vector3()).project(renderedCamera);
   handlers.get('stage:click')({clientX:(point.x+1)*600,clientY:(1-point.y)*450});
   assert.equal(lastScroll.top,stops[1]*(6300-900));
+});
+test('portrait opening and closing frames fit the complete pavilion',()=>{
+  let pavilion;renderedScene.traverse(o=>{if(o.userData.hangulBuilding)pavilion=o;});
+  const bounds=new Three.Box3().setFromObject(pavilion);
+  for(const aspect of [320/400,390/500,430/560,320/560,16/9])for(const p of [0,1]){
+    const pose=fitTourPose(sampleTour(p,{mobile:aspect<1}),bounds,aspect),camera=new Three.PerspectiveCamera(pose.fov,aspect,.1,150);
+    camera.position.fromArray(pose.position);camera.lookAt(...pose.target);camera.updateMatrixWorld(true);
+    assert.ok(projectedBounds(pavilion,camera).points.every(v=>Math.abs(v.x)<.98&&Math.abs(v.y)<.98));
+  }
+});
+test('hidden sculpture clicks are ignored and paused rendering performs no work',()=>{
+  sample(0);lastScroll=undefined;
+  for(const char of tourGlyphs){const point=new Three.Box3().setFromObject(artwork(char).children[0]).getCenter(new Three.Vector3()).project(renderedCamera);handlers.get('stage:click')({clientX:(point.x+1)*600,clientY:(1-point.y)*450});}
+  assert.equal(lastScroll,undefined);
+  app.controls.pause();const before=renderCount;sample(stops[2]);assert.equal(renderCount,before);
+  app.controls.resume();sample(stops[2]);assert.ok(renderCount>before);
+});
+test('environment detail is concentrated near the selected gallery',t=>{
+  const counts=()=>{let meshes=0,triangles=0,instances=0;renderedScene.traverseVisible(o=>{if(!o.isMesh)return;meshes++;const n=o.isInstancedMesh?o.count:1;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*n;if(o.userData.fullDetailCount)instances+=n;});return{meshes,triangles,instances};};
+  sample(stops[2]);const water=counts();t.diagnostic('Water gallery scene: '+JSON.stringify(water));
+  assert.ok(water.meshes<300);assert.ok(water.triangles<200000);
+  const leaves=[];renderedScene.traverse(o=>{if(o.userData.environmentDetail==='leaves')leaves.push(o);});
+  const distant=leaves.reduce((n,o)=>n+o.count,0);
+  sample(stops[5]);const garden=leaves.reduce((n,o)=>n+o.count,0);
+  assert.ok(garden>distant*2);assert.equal(garden,leaves.reduce((n,o)=>n+o.userData.fullDetailCount,0));
+  assert.equal(detailCount(3100,10,'leaves'),3100);
+});
+test('opaque architecture prevents a sculpture from being picked through a wall',()=>{
+  const scene=new Three.Scene(),sculpture=new Three.Group();sculpture.userData.artGlyph='work';scene.add(sculpture);
+  const material=new Three.MeshBasicMaterial(),piece=new Three.Mesh(new Three.BoxGeometry(1,1,1),material),wall=new Three.Mesh(new Three.BoxGeometry(2,2,.2),material);
+  sculpture.add(piece);wall.position.z=2;scene.add(wall);scene.updateMatrixWorld(true);
+  const ray=new Three.Raycaster(new Three.Vector3(0,0,5),new Three.Vector3(0,0,-1));
+  assert.equal(pickVisibleArtwork(Three,ray,[sculpture],[wall]),undefined);wall.visible=false;
+  assert.equal(pickVisibleArtwork(Three,ray,[sculpture],[wall]),'work');sculpture.visible=false;
+  assert.equal(pickVisibleArtwork(Three,ray,[sculpture],[wall]),undefined);
 });
 test('the route returns home, is continuous in both directions and respects reduced motion',()=>{
   const start=sample(0),end=sample(1);

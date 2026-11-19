@@ -48,8 +48,8 @@ export function createEnvironment(THREE, {mobile=false}={}) {
     bark:architecturalMaterial('wood','#aa8a65',[90,75,54],.97,0,47),
     soil:architecturalMaterial('gravel','#6b6251',[85,80,60],1,0,21)
   };
-  const rockGeo=new THREE.IcosahedronGeometry(1,2),rp=rockGeo.getAttribute('position');
-  for(let i=0;i<rp.count;i++){const x=rp.getX(i),y=rp.getY(i),z=rp.getZ(i),d=.9+.14*sin(x*7+y*3+z*8)+.065*cos(z*15-x*11);rp.setXYZ(i,x*d,y*d,z*d);}rockGeo.computeVertexNormals();
+  function stoneGeometry(detail){const geo=new THREE.IcosahedronGeometry(1,detail),p=geo.getAttribute('position');for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),d=.9+.14*sin(x*7+y*3+z*8)+.065*cos(z*15-x*11);p.setXYZ(i,x*d,y*d,z*d);}geo.computeVertexNormals();return geo;}
+  const rockGeo=stoneGeometry(2),pebbleGeo=stoneGeometry(1);
   const leafGeo=new THREE.BufferGeometry(),lp=[],li=[];
   // Each leaf has a curved midrib, tapered blade and subtly curled margins.
   for(let i=0;i<=7;i++){const t=i/7,w=.27*pow(sin(PI*t),.8);for(const u of [-1,0,1])lp.push(u*w,t,.11*sin(PI*t)-abs(u)*w*.35);}
@@ -62,7 +62,7 @@ export function createEnvironment(THREE, {mobile=false}={}) {
   function add(parent,geo,mat,x,y,z){const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
   function solid(parent,w,h,d,mat,x,y,z){return add(parent,new THREE.BoxGeometry(w,h,d),mat,x,y,z);}
   const dummy=new THREE.Object3D(),color=new THREE.Color();
-  function instances(parent,geo,mat,count,fill,seed,kind){const m=new THREE.InstancedMesh(geo,mat,count),rng=random(seed);m.userData.environmentDetail=kind;m.castShadow=kind==='grass';m.receiveShadow=true;
+  function instances(parent,geo,mat,count,fill,seed,kind){const m=new THREE.InstancedMesh(geo,mat,count),rng=random(seed);m.userData.environmentDetail=kind;m.userData.fullDetailCount=count;m.castShadow=false;m.receiveShadow=true;
     for(let i=0;i<count;i++){dummy.position.set(0,0,0);dummy.rotation.set(0,0,0);dummy.scale.set(1,1,1);fill(dummy,rng,i,color);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);m.setColorAt(i,color);}
     m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;m.computeBoundingSphere();parent.add(m);return m;
   }
@@ -83,9 +83,9 @@ export function createEnvironment(THREE, {mobile=false}={}) {
       o.position.set(e.x+cos(theta)*rad,e.y+height,e.z+sin(theta)*rad);o.rotation.set((r()-.5)*PI,(r()-.5)*PI*2,(r()-.5)*PI);const s=.16+r()*.18;o.scale.set(s*(.8+r()*.5),s,s);c.setHSL(.24+r()*.085,.24+r()*.23,.19+r()*.14);
     },seed+20,'leaves');return tree;
   }
-  function grasses(parent,x,z,w,d,seed){instances(parent,grassGeo,grassMat,mobile?280:580,(o,r,i,c)=>{const tu=Math.floor(i/13),clusterX=hash(tu,0,seed)-.5,clusterZ=hash(tu,1,seed)-.5;const angle=r()*2*PI,rad=r()*.22;o.position.set(x+clusterX*(w-.5)+cos(angle)*rad,.19,z+clusterZ*(d-.55)+sin(angle)*rad);o.rotation.set(0,r()*2*PI,(r()-.5)*.7);const size=.24+r()*.61;o.scale.set(.8+r()*.6,size,size);c.setHSL(.17+r()*.13,.22+r()*.3,.19+r()*.18);},seed,'grass');}
+  function grasses(parent,x,z,w,d,seed){const count=mobile?280:580,clusters=Math.ceil(count/13);instances(parent,grassGeo,grassMat,count,(o,r,i,c)=>{const tu=i%clusters,clusterX=hash(tu,0,seed)-.5,clusterZ=hash(tu,1,seed)-.5;const angle=r()*2*PI,rad=r()*.22;o.position.set(x+clusterX*(w-.5)+cos(angle)*rad,.19,z+clusterZ*(d-.55)+sin(angle)*rad);o.rotation.set(0,r()*2*PI,(r()-.5)*.7);const size=.24+r()*.61;o.scale.set(.8+r()*.6,size,size);c.setHSL(.17+r()*.13,.22+r()*.3,.19+r()*.18);},seed,'grass');}
   function rock(parent,x,z,size,seed,y=.22){const rng=random(seed),m=add(parent,rockGeo,materials.dark,x,y+size*.28,z);m.rotation.set(rng()*.4,rng()*PI,rng()*.35);m.scale.set(size*(1.15+rng()*.45),size*(.42+rng()*.28),size*(.85+rng()*.4));m.userData.environmentDetail='natural-stone';return m;}
-  function pebbles(parent,seed){instances(parent,rockGeo,pebbleMat,mobile?550:1050,(o,r,i,c)=>{let x=(r()-.5)*10.4,z=(r()-.5)*9.5;if(abs(x)<2.7&&abs(z)<1.8)x=(x<0?-1:1)*3.2;if(z>1.65&&abs(x)<1.95)x=x<0?-2.15:2.15;o.position.set(x,.16,z);o.rotation.set(r()*.8,r()*2*PI,r()*.6);const s=.035+r()*.085;o.scale.set(s*1.5,s*.6,s);c.setHSL(.09+r()*.04,.08+r()*.09,.36+r()*.31);},seed,'pebbles');}
+  function pebbles(parent,seed){instances(parent,pebbleGeo,pebbleMat,mobile?550:1050,(o,r,i,c)=>{let x=(r()-.5)*10.4,z=(r()-.5)*9.5;if(abs(x)<2.7&&abs(z)<1.8)x=(x<0?-1:1)*3.2;if(z>1.65&&abs(x)<1.95)x=x<0?-2.15:2.15;o.position.set(x,.16,z);o.rotation.set(r()*.8,r()*2*PI,r()*.6);const s=.035+r()*.085;o.scale.set(s*1.5,s*.6,s);c.setHSL(.09+r()*.04,.08+r()*.09,.36+r()*.31);},seed,'pebbles');}
   function timberDeck(parent,mat){
     for(let i=0;i<28;i++){const x=-5.4+i*.4;const pl=solid(parent,.392,.1,9.8,mat,x,.16,0);pl.userData.environmentDetail='deck-board';}
     for(const x of [-4.8,4.8])for(const z of [-4.15,3.75])solid(parent,.24,5.45,.24,mat,x,2.84,z);
@@ -101,7 +101,7 @@ export function createEnvironment(THREE, {mobile=false}={}) {
 // The shader distorts that reflection with two gently animated capillary-wave bands.
 export function createReflectingPool(THREE, parent, scene, renderer, width=11.1,depth=9.8,mobile=false){
   const fallback=new THREE.MeshPhysicalMaterial({color:'#38524a',metalness:.35,roughness:.23,clearcoat:1,clearcoatRoughness:.14,envMapIntensity:.72});
-  const capable=renderer?.isWebGLRenderer===true;
+  let capable=renderer?.isWebGLRenderer===true;
   const geometry=new THREE.PlaneGeometry(width,depth),target=capable?new THREE.WebGLRenderTarget(mobile?256:512,mobile?256:512,{type:renderer.extensions?.has('EXT_color_buffer_float')?THREE.HalfFloatType:THREE.UnsignedByteType,generateMipmaps:false}):null;
   const mirrorMatrix=new THREE.Matrix4(),reflectionCamera=new THREE.PerspectiveCamera(),plane=new THREE.Plane();
   const material=capable?new THREE.ShaderMaterial({transparent:true,depthWrite:true,uniforms:{reflection:{value:target.texture},reflectionMatrix:{value:mirrorMatrix},time:{value:0},alpha:{value:1},light:{value:1},ready:{value:0}},
@@ -112,11 +112,12 @@ export function createReflectingPool(THREE, parent, scene, renderer, width=11.1,
     #include <colorspace_fragment>
     }` }):fallback;
   const pool=new THREE.Mesh(geometry,material);pool.rotation.x=-Math.PI/2;pool.position.set(0,.267,0);pool.name='Reflecting pool';pool.userData.environmentDetail='reflecting-pool';pool.receiveShadow=false;pool.castShadow=false;parent.add(pool);
-  let last=-Infinity;const position=new THREE.Vector3(),look=new THREE.Vector3(),up=new THREE.Vector3(),clip=new THREE.Vector4(),q=new THREE.Vector4(),bias=new THREE.Matrix4().set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1);
+  let last=-Infinity,lastBright,lastAspect,lastFov;const previousPosition=new THREE.Vector3(),previousQuaternion=new THREE.Quaternion(),position=new THREE.Vector3(),look=new THREE.Vector3(),up=new THREE.Vector3(),clip=new THREE.Vector4(),q=new THREE.Vector4(),bias=new THREE.Matrix4().set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1);
   function update(camera,seconds,bright,reduce,now,nearby=true){
     if(!capable||!pool.visible||!parent.visible)return;
     const activeMaterial=pool.material;activeMaterial.uniforms.time.value=reduce?0:seconds;activeMaterial.uniforms.alpha.value=activeMaterial.opacity;activeMaterial.uniforms.light.value=bright?1.4:1;
     if(!nearby){activeMaterial.uniforms.ready.value=0;return;}
+    if(activeMaterial.uniforms.ready.value===1&&lastBright===bright&&lastAspect===camera.aspect&&lastFov===camera.fov&&previousPosition.distanceToSquared(camera.position)<.000025&&Math.abs(previousQuaternion.dot(camera.quaternion))>.999999)return;
     if(now-last<(mobile?72:38)&&!reduce)return;last=now;
     pool.getWorldPosition(position);const y=position.y;
     if(camera.position.y<=y+.02)return;
@@ -130,8 +131,10 @@ export function createReflectingPool(THREE, parent, scene, renderer, width=11.1,
     q.set((Math.sign(clip.x)+p[8])/p[0],(Math.sign(clip.y)+p[9])/p[5],-1,(1+p[10])/p[14]);clip.multiplyScalar(2/clip.dot(q));p[2]=clip.x;p[6]=clip.y;p[10]=clip.z+1-.002;p[14]=clip.w;
     const previous=renderer.getRenderTarget(),shadow=renderer.shadowMap.autoUpdate,enabled=renderer.xr?.enabled;pool.visible=false;
     try{if(renderer.xr)renderer.xr.enabled=false;renderer.shadowMap.autoUpdate=false;renderer.setRenderTarget(target);renderer.state.buffers.depth.setMask(true);renderer.clear();renderer.render(scene,reflectionCamera);}
+    catch{capable=false;activeMaterial.uniforms.ready.value=0;return;}
     finally{renderer.setRenderTarget(previous);renderer.shadowMap.autoUpdate=shadow;if(renderer.xr)renderer.xr.enabled=enabled;pool.visible=true;}
+    previousPosition.copy(camera.position);previousQuaternion.copy(camera.quaternion);lastBright=bright;lastAspect=camera.aspect;lastFov=camera.fov;
     activeMaterial.uniforms.ready.value=1;
   }
-  return{pool,update,capable};
+  return{pool,update,get capable(){return capable;}};
 }

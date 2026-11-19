@@ -6,7 +6,7 @@ export function initInterface(){
   let controller=null,textMode=false,savedScroll=0,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
   function showText(target='text-tour'){
     if(root.dataset.view==='3d')savedScroll=scrollY;
-    textMode=true;root.dataset.view='static';help.open=false;$('resume-gallery').hidden=false;
+    textMode=true;root.dataset.view='static';controller?.pause?.();help.open=false;$('resume-gallery').hidden=false;
     requestAnimationFrame(()=>{const section=$(target);section?.scrollIntoView({behavior:'instant',block:'start'});if(section){section.tabIndex=-1;section.focus({preventScroll:true});}});
   }
   function go(index){
@@ -21,7 +21,7 @@ export function initInterface(){
   document.querySelectorAll('[data-credits]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();showText('credits');}));
   document.querySelector('.skip').addEventListener('click',e=>{e.preventDefault();showText();});
   document.querySelector('.failure-actions a').addEventListener('click',e=>{e.preventDefault();showText();});
-  $('resume-gallery').addEventListener('click',()=>{if(!controller){location.reload();return;}textMode=false;root.dataset.view='3d';scrollTo({top:savedScroll,behavior:'instant'});controller.refresh();});
+  $('resume-gallery').addEventListener('click',()=>{if(!controller){location.reload();return;}textMode=false;root.dataset.view='3d';scrollTo({top:savedScroll,behavior:'instant'});controller.resume?.();controller.refresh();});
   $('zoom-in').addEventListener('click',()=>controller?.changeZoom(.15));
   $('zoom-out').addEventListener('click',()=>controller?.changeZoom(-.15));
   $('zoom-reset').addEventListener('click',()=>controller?.setZoom(1));
@@ -35,7 +35,7 @@ export function initInterface(){
   });
   document.addEventListener('click',e=>{if(help.open&&!help.contains(e.target))help.open=false;});
   async function openWorkshop(source){
-    opener=source;help.open=false;if(!dialog.open){previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';dialog.showModal();}
+    opener=source;help.open=false;if(!dialog.open){previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';dialog.showModal();controller?.pause?.();}
     $('retry-workshop').hidden=true;
     if(workshop){workshop.open();return;}
     $('workshop-loading').hidden=false;$('workshop-loading').textContent='글자 조각을 준비하고 있습니다.';
@@ -50,7 +50,7 @@ export function initInterface(){
   $('story-action').hidden=true;
   $('retry-workshop').addEventListener('click',()=>openWorkshop(opener));
   $('workshop-close').addEventListener('click',()=>dialog.close());
-  dialog.addEventListener('close',()=>{workshop?.pause();document.body.style.overflow=previousOverflow;opener?.focus({preventScroll:true});});
+  dialog.addEventListener('close',()=>{workshop?.pause();document.body.style.overflow=previousOverflow;if(root.dataset.view==='3d')controller?.resume?.();opener?.focus({preventScroll:true});});
   dialog.addEventListener('click',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});
   $('load-licenses').addEventListener('click',async e=>{
     const button=e.currentTarget;button.disabled=true;button.textContent='라이선스를 불러오는 중';
@@ -59,5 +59,5 @@ export function initInterface(){
   const timeout=setTimeout(()=>{if(root.dataset.state==='loading'){$('load-status').textContent='3D 준비가 늦어지고 있습니다. 아래 설명부터 읽어보세요.';$('failure-actions').hidden=false;}},12000);
   function fail(error){clearTimeout(timeout);controller=null;root.dataset.view='static';root.dataset.state='error';$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
   addEventListener('museum:failure',e=>fail(e.detail));
-  return {wantsText:()=>textMode,fail,attach(value){clearTimeout(timeout);controller=value;root.dataset.state='ready';$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);if(textMode)root.dataset.view='static';else root.dataset.view='3d';controller.refresh();}};
+  return {wantsText:()=>textMode,fail,attach(value){clearTimeout(timeout);controller=value;root.dataset.state='ready';$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);if(textMode)root.dataset.view='static';else root.dataset.view='3d';if(textMode||dialog.open)controller.pause?.();controller.refresh();}};
 }

@@ -1,8 +1,9 @@
 import * as THREE from './assets/three.module.js';
-import { tourStops as stops, tourGlyphs, chapterAt, sampleTour } from './camera-tour.js';
+import { tourStops as stops, tourGlyphs, chapterAt, sampleTour, fitTourPose } from './camera-tour.js';
 import { exhibitionSites } from './exhibition-layout.js';
 import { buildHangulBuilding } from './hangul-building.js';
 import { createEnvironment, createReflectingPool } from './environment.js';
+import { batchStaticBoxes, detailCount, pickVisibleArtwork } from './scene-quality.js';
 
 const $ = (id) => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -10,6 +11,8 @@ import { chapters } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
 let reflectingPool=null;
+let heroBounds,paused=false,renderFailed=false;
+const artworkBounds=[],detailMeshes=[],blockers=[];
 let bright = false, textTimer, scrollHeight = 1;
 let zoom = 1, desiredZoom = 1;
 const lamps = [];
@@ -17,11 +20,13 @@ const sculptures = [];
 const exhibitionGroups=[];
 const stage = $('stage');
 const clamp = THREE.MathUtils.clamp;
+const setText=(id,value)=>{const el=$(id);if(el.textContent!==value)el.textContent=value;};
 
 function updateScroll() {
   if(document.documentElement.dataset.view!=='3d')return;
   scrollHeight = Math.max(1, document.documentElement.scrollHeight - innerHeight);
   desired = clamp(scrollY / scrollHeight, 0, 1);
+  if(paused||renderFailed)return;
   if (motion.matches) { progress = desired; draw(performance.now()); }
   else requestDraw();
 }
@@ -34,6 +39,7 @@ function setZoom(value) {
   if(motion.matches)zoom=desiredZoom;
   $('zoom-in').disabled=desiredZoom>=1.8;
   $('zoom-out').disabled=desiredZoom<=.75;
+  setText('zoom-value',Math.round(desiredZoom*100)+'%');
   requestDraw();
 }
 function toggleLighting(){
@@ -57,7 +63,7 @@ function updateChapter(){
   $('story-action').hidden=index!==7;
   document.querySelectorAll('[data-stop]').forEach((button,i)=>{
     button.classList.toggle('active',i===index);
-    if(i===index)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');
+    if(i===index){button.setAttribute('aria-current','step');const nav=button.parentElement;if(nav?.scrollWidth>nav.clientWidth){const left=button.offsetLeft-nav.offsetLeft; if(left<nav.scrollLeft||left+button.offsetWidth>nav.scrollLeft+nav.clientWidth)nav.scrollLeft=left-(nav.clientWidth-button.offsetWidth)/2;}}else button.removeAttribute('aria-current');
   });
   $('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
 }
@@ -112,7 +118,7 @@ function setup() {
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();dispatchEvent(new CustomEvent('museum:failure',{detail:new Error('WebGL context lost')}));});
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();failRendering(new Error('WebGL context lost'));});
   renderer.domElement.addEventListener('webglcontextrestored',()=>{ /* Recovery is user-initiated, preserving workshop state. */ });
   house=new THREE.Group();scene.add(house);
   scene.fog.density=.009;
@@ -142,7 +148,8 @@ function setup() {
     box(8,.12,1.0,limestone,.3,.32-i*.12,5.35+i*.55);
     box(7.9,.018,.025,strip,.3,.37-i*.12,5.85+i*.55);
   }
-  buildHangulBuilding(THREE,house,{limestone,timber,charcoal:dark,glass,strip});
+  const pavilion=buildHangulBuilding(THREE,house,{limestone,timber,charcoal:dark,glass,strip});
+  heroBounds=new THREE.Box3().setFromObject(pavilion);
   // A high exhibition hall frames the route without enclosing the artworks in the house.
   box(68,11,.35,hall,0,5.4,-34);box(.35,11,68,hall,-34,5.4,0);box(.35,11,68,hall,34,5.4,0);
   for(let x=-30;x<=30;x+=6){
@@ -154,6 +161,7 @@ function setup() {
     for(const x of [-33.6,33.6])box(.2,13.8,.2,blackMetal,x,6.8,z);
   }
   const ceiling=mesh(new THREE.PlaneGeometry(67,67),glass,0,13.8,0);ceiling.rotation.x=Math.PI/2;ceiling.castShadow=false;
+  batchStaticBoxes(THREE,house);
   const displayMaterials={'ㄱ':ivory,'ㅇ':bronze,'ㅁ':timber,'ㅎ':gold,'ㅏ':green,'ㅅ':ceramic};
   for(const site of exhibitionSites) {
     const groupStart=house.children.length,sceneStart=scene.children.length;
@@ -219,6 +227,7 @@ function setup() {
     const fixture=mesh(new THREE.CylinderGeometry(.16,.16,.48,16),blackMetal,spot.position.x,9.57,spot.position.z);
     fixture.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),target.position.clone().sub(fixture.position).normalize());
     box(4,.08,.1,blackMetal,spot.position.x,9.95,spot.position.z);
+    batchStaticBoxes(THREE,zone);
     const objects=house.children.slice(groupStart),materialCache=new Map(),fading=[];
     objects.forEach(root=>root.traverse(object=>{
       if(!object.isMesh)return;
@@ -230,7 +239,7 @@ function setup() {
       }
       object.material=materialCache.get(original);
     }));
-    exhibitionGroups.push({objects,fading,visible:true,lighting:scene.children.slice(sceneStart).filter(object=>object.isLight)});
+    exhibitionGroups.push({objects,fading,visible:true,lighting:scene.children.slice(sceneStart).filter(object=>object.isLight),reveal:1});
 
   }
   scene.add(new THREE.HemisphereLight('#d4d9da','#534531',.43));
@@ -241,17 +250,26 @@ function setup() {
   for(let i=0;i<p.length;i++){seed=(seed*16807)%2147483647;p[i]=((seed%1000)/1000-.5)*(i%3===1?15:55);if(i%3===1)p[i]+=8;}
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(p,3));
   dust=new THREE.Points(pg,new THREE.PointsMaterial({color:'#dbcba5',size:.025,transparent:true,opacity:.2,depthWrite:false}));scene.add(dust);
+  scene.updateMatrixWorld(true);
+  sculptures.forEach(o=>artworkBounds.push(new THREE.Box3().setFromObject(o)));
+  scene.traverse(o=>{
+    if(!o.isMesh)return;
+    if(o.userData.fullDetailCount){const center=o.geometry.boundingSphere?.center.clone()??new THREE.Vector3();o.localToWorld(center);detailMeshes.push({mesh:o,center:o.boundingSphere?.center.clone().applyMatrix4(o.matrixWorld)??center});return;}
+    let ancestor=o;while(ancestor&&!ancestor.userData.artGlyph)ancestor=ancestor.parent;
+    if(!ancestor&&!o.material.transparent&&o.material.opacity>=.92)blockers.push(o);
+  });
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
   function pickArtwork(e) {
+    if(paused||renderFailed)return;
     const rect=renderer.domElement.getBoundingClientRect();
+    if(!rect.width||!rect.height||e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)return;
     pointer.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
     raycaster.setFromCamera(pointer,camera);
-    let picked=raycaster.intersectObjects(sculptures,true)[0]?.object;
-    while(picked&&!picked.userData.artGlyph)picked=picked.parent;
-    return picked?.userData.artGlyph;
+    return pickVisibleArtwork(THREE,raycaster,sculptures,blockers);
   }
   stage.addEventListener('click',e=>{const art=pickArtwork(e);if(art)goTo(stops[tourGlyphs.indexOf(art)+1]);});
-  stage.addEventListener('pointermove',e=>{if(e.pointerType!=='touch')renderer.domElement.style.cursor=pickArtwork(e)?'pointer':'default';});
+  let lastPick=-Infinity;
+  stage.addEventListener('pointermove',e=>{const now=performance.now();if(e.pointerType!=='touch'&&now-lastPick>60){lastPick=now;renderer.domElement.style.cursor=pickArtwork(e)?'pointer':'default';}});
   stage.addEventListener('pointerleave',()=>{renderer.domElement.style.cursor='default';});
   resize();
   renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
@@ -262,18 +280,21 @@ function setup() {
 function resize() {
   if(!renderer)return;
   const r=stage.getBoundingClientRect();
+  if(r.width<=0||r.height<=0)return;
   renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();requestDraw();
 }
 new ResizeObserver(resize).observe(stage);
 addEventListener('resize',updateScroll,{passive:true});
 addEventListener('scroll',updateScroll,{passive:true});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){if(frame)cancelAnimationFrame(frame);frame=0;}else requestDraw();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelDraw();else{lastTime=0;requestDraw();}});
 motion.addEventListener('change',()=>{progress=desired;requestDraw();});
 
-function requestDraw(){if(!frame&&!document.hidden&&document.documentElement.dataset.view==='3d')frame=requestAnimationFrame(draw);}
+function cancelDraw(){if(frame&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(frame);frame=0;}
+function failRendering(error){if(renderFailed)return;renderFailed=true;cancelDraw();dispatchEvent(new CustomEvent('museum:failure',{detail:error}));}
+function requestDraw(){if(!frame&&!paused&&!renderFailed&&!document.hidden&&document.documentElement.dataset.view==='3d')frame=requestAnimationFrame(draw);}
 function draw(time,force=false) {
   frame=0;
-  if(!force&&(document.documentElement.dataset.view!=='3d'||document.hidden))return;
+  if(renderFailed||(!force&&(paused||document.documentElement.dataset.view!=='3d'||document.hidden)))return;
   if(!force&&chapter===2&&reflectingPool?.capable&&!motion.matches&&Math.abs(progress-desired)<.00001&&Math.abs(zoom-desiredZoom)<.00001&&time-lastTime<35){requestDraw();return;}
   const dt=Math.min(.05,(time-lastTime)/1000||.016);lastTime=time;
   progress=motion.matches?desired:THREE.MathUtils.damp(progress,desired,7,dt);
@@ -282,28 +303,30 @@ function draw(time,force=false) {
   if(Math.abs(zoom-desiredZoom)<.0001)zoom=desiredZoom;
   if(camera) {
     const mobile=innerWidth<761;
-    const pose=sampleTour(progress,{mobile,reducedMotion:motion.matches,zoom});
+    let pose=sampleTour(progress,{mobile,reducedMotion:motion.matches,zoom});
+    const heroWeight=motion.matches?(pose.chapter===0||pose.chapter===7?1:0):Math.max(1-THREE.MathUtils.smoothstep(progress,.025,.075),THREE.MathUtils.smoothstep(progress,.925,.98));
+    if(heroWeight>0)pose=fitTourPose(pose,heroBounds,camera.aspect,zoom,heroWeight);
+    if(pose.chapter>0&&pose.chapter<7&&pose.focus>0)pose=fitTourPose(pose,artworkBounds[pose.chapter-1],camera.aspect,zoom,pose.focus);
     camera.position.fromArray(pose.position);camera.lookAt(...pose.target);
     camera.fov=pose.fov;camera.updateProjectionMatrix();
     const selected=chapters[pose.chapter].glyph;
     const reveal=Math.min(THREE.MathUtils.smoothstep(progress,.035,.075),1-THREE.MathUtils.smoothstep(progress,.9,.95));
     exhibitionGroups.forEach(group=>{
       const visible=reveal>.001;
-      if(visible&&!group.visible)renderer.shadowMap.needsUpdate=true;
-      group.visible=visible;
-      group.objects.forEach(object=>object.visible=visible);
+      if(visible!==group.visible){renderer.shadowMap.needsUpdate=true;group.visible=visible;group.objects.forEach(object=>object.visible=visible);}
+      if(group.reveal===reveal)return;group.reveal=reveal;
       group.fading.forEach(item=>{item.material.opacity=item.opacity*reveal;item.material.transparent=reveal<.999||item.transparent;item.material.depthWrite=reveal<.999?false:item.depthWrite;});
       group.lighting.filter(light=>!light.isSpotLight).forEach(light=>{light.userData.restIntensity??=light.intensity;light.intensity=light.userData.restIntensity*reveal;});
     });
     lamps.forEach(l=>{const accent=l.userData.artGlyph===selected?1+pose.focus*.2:1-pose.focus*.48;l.intensity=l.userData.base*accent*(bright?1.2:1)*reveal;});
+    if(reveal>.001)for(const item of detailMeshes){const count=detailCount(item.mesh.userData.fullDetailCount,camera.position.distanceTo(item.center),item.mesh.userData.environmentDetail);if(count!==item.mesh.count)item.mesh.count=count;}
     $('experience').classList.toggle('is-detail',pose.focus>.35);
-    $('view-label').textContent=pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관';
+    setText('view-label',pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관');
     if(dust) dust.rotation.y=progress*.12;
     if(reflectingPool)reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter>=1&&pose.chapter<=3);
-    renderer.render(scene,camera);
+    try{renderer.render(scene,camera);}catch(error){if(force)throw error;failRendering(error);return;}
   }
-  $('tour-progress').textContent=Math.round(progress*100)+'%';
-  $('zoom-value').textContent=Math.round(zoom*100)+'%';
+  setText('tour-progress',Math.round(progress*100)+'%');
   updateChapter();
   if(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001||(!motion.matches&&reflectingPool?.capable&&chapter===2))requestDraw();
 }
@@ -311,6 +334,7 @@ export function initGallery(){
   setup();
   return {
     goTo,setZoom,toggleLighting,refresh(){resize();updateScroll();},
+    pause(){paused=true;cancelDraw();},resume(){if(renderFailed)return;paused=false;lastTime=0;resize();updateScroll();requestDraw();},
     changeZoom(delta){setZoom(desiredZoom+delta);},
     next(){goTo(desired>.985?0:(stops.find(stop=>stop>desired+.025)??1));}
   };

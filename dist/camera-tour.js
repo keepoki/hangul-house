@@ -56,3 +56,23 @@ export function sampleTour(progress, {mobile=false, reducedMotion=false, zoom=1}
   for(let j=0;j<3;j++)position[j]=target[j]+(position[j]-target[j])*distanceScale;
   return {position,target,fov:mix(a[3],b[3],t)+(mobile?7*focus:0),focus,chapter:chapterAt(raw)};
 }
+
+// Fit the actual artwork bounds into the camera's usable viewport, before manual zoom.
+// The authored camera direction stays unchanged, so a narrow viewport cannot crop the opening.
+export function fitTourPose(pose,bounds,aspect,zoom=1,weight=1){
+  if(!bounds||!Number.isFinite(aspect)||aspect<=0)return pose;
+  const offset=pose.position.map((v,i)=>v-pose.target[i]),distance=Math.hypot(...offset);
+  if(distance<.0001)return pose;
+  const dir=offset.map(v=>v/distance),horizontal=Math.hypot(dir[0],dir[2]);
+  if(horizontal<.0001)return pose;
+  const right=[dir[2]/horizontal,0,-dir[0]/horizontal];
+  const up=[dir[1]*right[2],dir[2]*right[0]-dir[0]*right[2],-dir[1]*right[0]];
+  const dot=(a,b)=>a.reduce((sum,v,i)=>sum+v*b[i],0),tan=Math.tan(pose.fov*Math.PI/360)*.92;
+  let required=0;
+  for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){
+    const v=[x-pose.target[0],y-pose.target[1],z-pose.target[2]],depth=dot(v,dir);
+    required=Math.max(required,depth+Math.abs(dot(v,right))/(tan*aspect),depth+Math.abs(dot(v,up))/tan);
+  }
+  const base=distance*zoom,fit=distance+Math.max(0,required-base)*Math.max(0,Math.min(1,weight))/zoom;
+  return {...pose,position:pose.target.map((v,i)=>v+dir[i]*fit)};
+}

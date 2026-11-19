@@ -61,7 +61,7 @@
 <button type="button" data-stop="5" aria-label="초록의 정원, 아">ㅏ</button>
 <button type="button" data-stop="6" aria-label="고요의 방, 시옷">ㅅ</button>
 <button type="button" data-stop="7" aria-label="관람 마무리와 한글 작업실">짓기</button>
-</nav><div class="journey-status"><span id="view-label">한글 건축관</span><output id="tour-progress" aria-label="관람 진행률">0%</output></div>
+</nav><div class="journey-status"><span id="view-label">한글 건축관</span><output id="tour-progress" aria-live="off" aria-label="관람 진행률">0%</output></div>
 </footer></div>
 <div class="scroll-track" id="journey" aria-hidden="true"></div>
 <section class="text-tour" id="text-tour" aria-labelledby="text-tour-title">
@@ -92,5 +92,6 @@ import('./interface.js').then(async ({initInterface}) => {
  document.documentElement.dataset.view='static';document.documentElement.dataset.state='error';
  document.getElementById('load-status').textContent='3D 전시를 열지 못했습니다. 아래 전시 설명은 계속 읽을 수 있습니다.';
  document.getElementById('failure-actions').hidden=false;
+ document.getElementById('retry-gallery').addEventListener('click',()=>location.reload(),{once:true});
 });
 </script></body></html>

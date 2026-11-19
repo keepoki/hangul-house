@@ -24,13 +24,18 @@ test('landscaping uses branching geometry and instanced leaf and pebble detail',
 test('the reflection pass mirrors the real camera and restores render state',()=>{
   const scene=new THREE.Scene(),group=new THREE.Group();group.position.set(0,.2,8);scene.add(group);
   const camera=new THREE.PerspectiveCamera(35,1.3,.1,150);camera.position.set(3,4,18);camera.lookAt(0,2,8);camera.updateMatrixWorld(true);
-  let current=null,rendered=null,reflectionVisible=true,pool;
-  const renderer={isWebGLRenderer:true,shadowMap:{autoUpdate:true},xr:{enabled:true},state:{buffers:{depth:{setMask(){}}}},getRenderTarget:()=>current,setRenderTarget:v=>current=v,clear(){},render(s,c){rendered=c.position.clone();reflectionVisible=pool.visible;assert.ok(c.projectionMatrix.elements.every(Number.isFinite));}};
+  let current=null,rendered=null,reflectionVisible=true,pool,passes=0,fail=false;
+  const renderer={isWebGLRenderer:true,shadowMap:{autoUpdate:true},xr:{enabled:true},state:{buffers:{depth:{setMask(){}}}},getRenderTarget:()=>current,setRenderTarget:v=>current=v,clear(){},render(s,c){passes++;if(fail)throw new Error('Reflection target unavailable');rendered=c.position.clone();reflectionVisible=pool.visible;assert.ok(c.projectionMatrix.elements.every(Number.isFinite));}};
   const result=createReflectingPool(THREE,group,scene,renderer,11,9,true);pool=result.pool;
   result.update(camera,1,false,false,1000);
   assert.ok(rendered);assert.ok(Math.abs(rendered.y-(2*(.2+.267)-4))<.001);
   assert.equal(reflectionVisible,false);assert.equal(pool.visible,true);assert.equal(current,null);assert.equal(renderer.shadowMap.autoUpdate,true);assert.equal(renderer.xr.enabled,true);assert.equal(pool.material.uniforms.ready.value,1);
   assert.ok(pool.material.uniforms.reflectionMatrix.value.elements.every(Number.isFinite));
+  result.update(camera,1.2,false,false,1200);assert.equal(passes,1,'A stationary camera reuses its reflection');assert.equal(pool.material.uniforms.time.value,1.2);
   result.update(camera,2,true,true,2000);assert.equal(pool.material.uniforms.time.value,0);
   assert.equal(pool.material.uniforms.light.value,1.4);
+  assert.equal(passes,2);
+  fail=true;camera.position.x+=1;result.update(camera,3,false,false,3000);
+  assert.equal(result.capable,false);assert.equal(pool.material.uniforms.ready.value,0);assert.equal(pool.visible,true);assert.equal(current,null);assert.equal(renderer.shadowMap.autoUpdate,true);
+  result.update(camera,4,false,false,4000);assert.equal(passes,3,'Failed reflection is not retried every frame');
 });
