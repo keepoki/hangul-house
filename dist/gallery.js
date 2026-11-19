@@ -10,9 +10,8 @@ const motion = matchMedia('(prefers-reduced-motion: reduce)');
 import { chapters } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
-let stageWidth=0,stageHeight=0;
+let stageWidth=0,stageHeight=0,stagePixelRatio=0;
 let reflectingPool=null;
-let environmentDetail;
 let heroBounds,paused=false,renderFailed=false;
 let scrollEnabled=false;
 const artworkBounds=[],detailMeshes=[],blockers=[];
@@ -25,10 +24,10 @@ const exhibitionGroups=[];
 const stage = $('stage');
 const clamp = THREE.MathUtils.clamp;
 const setText=(id,value)=>{const el=$(id);if(el.textContent!==value)el.textContent=value;};
+function measureScrollHeight(){scrollHeight=Math.max(1,document.documentElement.scrollHeight-innerHeight);}
 
 function updateScroll() {
   if(document.documentElement.dataset.view!=='3d')return;
-  scrollHeight = Math.max(1, document.documentElement.scrollHeight - innerHeight);
   if(!scrollEnabled){desired=0;if(Math.abs(scrollY)>1)scrollTo({top:0,left:0,behavior:'instant'});return;}
   desired = clamp(scrollY / scrollHeight, 0, 1);
   if(paused||renderFailed)return;
@@ -38,7 +37,7 @@ function updateScroll() {
 function goTo(p) {
   scrollEnabled=true;
   setZoom(1);
-  scrollTo({ top: p * Math.max(1, document.documentElement.scrollHeight - innerHeight), behavior: motion.matches ? 'instant' : 'smooth' });
+  measureScrollHeight();scrollTo({top:p*scrollHeight,behavior:motion.matches?'instant':'smooth'});
 }
 // A stale restoration, resize or programmatic scroll cannot move the first shot.
 function permitUserScroll(e){
@@ -140,7 +139,7 @@ function setup() {
   scene=new THREE.Scene();scene.fog=new THREE.FogExp2('#10100f',.018);
   camera=new THREE.PerspectiveCamera(35,1,.1,150);
   renderer=new THREE.WebGLRenderer({antialias:innerWidth>=761,alpha:true,powerPreference:'high-performance'});
-  renderer.setClearColor('#10100f',0);renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<761?1:1.25));renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.setClearColor('#10100f',0);renderer.setPixelRatio(Math.min(devicePixelRatio,1));renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
@@ -148,7 +147,9 @@ function setup() {
   renderer.domElement.addEventListener('webglcontextrestored',()=>{ /* Recovery is user-initiated, preserving workshop state. */ });
   house=new THREE.Group();scene.add(house);
   scene.fog.density=.009;
-  environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761,progressive:true,onSurfaceReady:requestDraw});
+  // Final-size compact maps are ready before the tour starts. No post-ready texture replacement,
+  // GPU upload, or fallback CPU generation competes with the first scroll gesture.
+  const environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761,compact:true});
   const {limestone,dark,floor,timber,hall,gravel,soil}=environmentDetail.materials;
   const blackMetal=material('#343632',.4,.45);
   const bronze=material('#c59c5e',.3,.68);
@@ -201,7 +202,7 @@ function setup() {
     }
     if(site.theme==='water'){
       box(11.1,.14,9.8,dark,0,.17,0,zone);
-      reflectingPool=createReflectingPool(THREE,zone,scene,renderer,11.1,9.8,innerWidth<761,innerWidth>=761);
+      reflectingPool=createReflectingPool(THREE,zone,scene,renderer,11.1,9.8,innerWidth<761,false);
       for(const x of [-5.7,5.7])box(.35,.32,10.4,dark,x,.16,0,zone);
       for(const z of [-5.05,5.05])box(11.7,.32,.35,dark,0,.16,z,zone);
       for(const x of [-5.4,5.4])box(.025,.02,9.8,strip,x,.29,0,zone);
@@ -287,21 +288,13 @@ function setup() {
   }
   stage.addEventListener('click',e=>{const art=pickArtwork(e);if(art)goTo(stops[tourGlyphs.indexOf(art)+1]);});
   let lastPick=-Infinity;
-  stage.addEventListener('pointermove',e=>{const now=performance.now();if(e.pointerType!=='touch'&&now-lastPick>60){lastPick=now;renderer.domElement.style.cursor=pickArtwork(e)?'pointer':'default';}});
+  stage.addEventListener('pointermove',e=>{const now=performance.now();if(e.pointerType!=='touch'&&now-lastPick>80&&Math.abs(progress-desired)<.001){lastPick=now;renderer.domElement.style.cursor=pickArtwork(e)?'pointer':'default';}});
   stage.addEventListener('pointerleave',()=>{renderer.domElement.style.cursor='default';});
   resize();
   renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
   // The opening shot is always the first frame, independent of the old document's scroll offset.
   progress=desired=0;cancelDraw();
   draw(performance.now(),true,true);
-}
-
-function prepareBackground(){
-  if(renderFailed)return;
-  const idle=callback=>typeof requestIdleCallback==='function'?requestIdleCallback(callback,{timeout:1000}):setTimeout(callback,16);
-  // A full-size texture is generated off the UI thread, and the original map is upgraded in place.
-  const workerFactory=typeof Worker==='function'&&location.protocol!=='file:'?()=>new Worker(new URL('./surface-worker.js',document.baseURI),{type:'module'}):undefined;
-  environmentDetail.hydrate({workerFactory,schedule:idle});
 }
 
 const nextPaint=()=>new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
@@ -325,16 +318,51 @@ async function compileGallery(onProgress,shouldContinue){
   return true;
 }
 
+// Each room is activated only near its own stop, with a small overlap for the camera handoff.
+// The first transition must not activate the water, wood, and quiet galleries simultaneously.
+function inExhibitionWindow(p,index){
+  const start=index===0?.035:stops[index]+(stops[index+1]-stops[index])*.43;
+  const end=index===exhibitionSites.length-1?.92:stops[index+1]+(stops[index+2]-stops[index+1])*.66;
+  return p>=start&&p<=end;
+}
+
+// compileAsync alone does not upload geometry, instance buffers, or all textures. Render every
+// stop once into a tiny scissored region of the real framebuffer while the arrival screen covers it.
+async function warmGallery(onProgress,shouldContinue){
+  if(!renderer.setViewport||!renderer.setScissor||!renderer.setScissorTest)return true;
+  const viewport=renderer.getViewport?.(new THREE.Vector4())??new THREE.Vector4(0,0,stageWidth,stageHeight);
+  const scissor=renderer.getScissor?.(new THREE.Vector4())??viewport.clone(),scissorTest=renderer.getScissorTest?.()??false;
+  const culling=[];scene.traverse(object=>{if(object.isMesh||object.isPoints){culling.push([object,object.frustumCulled]);object.frustumCulled=false;}});
+  const w=Math.min(96,stageWidth),h=Math.min(96,stageHeight);
+  renderer.setViewport(0,0,w,h);renderer.setScissor(0,0,w,h);renderer.setScissorTest(true);
+  try{
+    for(let i=1;i<stops.length-1;i++){
+      if(renderFailed||!shouldContinue())return false;
+      onProgress(86+Math.floor((i-1)/(stops.length-2)*10),'warmup');await nextPaint();
+      if(renderFailed||!shouldContinue())return false;
+      progress=desired=stops[i];draw(performance.now(),true,false,true);
+    }
+    return true;
+  }finally{
+    for(const [object,value] of culling)object.frustumCulled=value;
+    renderer.setViewport(viewport.x,viewport.y,viewport.z,viewport.w);renderer.setScissor(scissor.x,scissor.y,scissor.z,scissor.w);renderer.setScissorTest(scissorTest);
+    progress=desired=0;lastTime=0;draw(performance.now(),true,true);
+  }
+}
+
 function resize() {
   if(!renderer)return;
   const r=stage.getBoundingClientRect();
   if(r.width<=0||r.height<=0)return;
   if(stageWidth===r.width&&stageHeight===r.height)return;
   stageWidth=r.width;stageHeight=r.height;
+  // Bound the number of shaded pixels, even on a 4K or high-DPI screen.
+  const maxPixels=innerWidth<761?480000:1000000,ratio=Math.min(devicePixelRatio,innerWidth<761?.85:1,Math.sqrt(maxPixels/(r.width*r.height)));
+  if(Math.abs(stagePixelRatio-ratio)>.005){stagePixelRatio=ratio;renderer.setPixelRatio(ratio);}
   renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();requestDraw();
 }
 new ResizeObserver(resize).observe(stage);
-addEventListener('resize',updateScroll,{passive:true});
+addEventListener('resize',()=>{measureScrollHeight();updateScroll();},{passive:true});
 addEventListener('scroll',updateScroll,{passive:true});
 for(const type of ['wheel','touchmove','keydown','pointerdown'])addEventListener(type,permitUserScroll,{passive:true,capture:true});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelDraw();else{lastTime=0;requestDraw();}});
@@ -343,7 +371,7 @@ motion.addEventListener('change',()=>{progress=desired;requestDraw();});
 function cancelDraw(){if(frame&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(frame);frame=0;}
 function failRendering(error){if(renderFailed)return;renderFailed=true;cancelDraw();dispatchEvent(new CustomEvent('museum:failure',{detail:error}));}
 function requestDraw(){if(!frame&&!paused&&!renderFailed&&!document.hidden&&document.documentElement.dataset.view==='3d')frame=requestAnimationFrame(draw);}
-function draw(time,force=false,prepareOnly=false) {
+function draw(time,force=false,prepareOnly=false,warmOnly=false) {
   frame=0;
   if(renderFailed||(!force&&(paused||document.documentElement.dataset.view!=='3d'||document.hidden)))return;
   if(!force&&chapter===2&&reflectingPool?.animated&&!motion.matches&&Math.abs(progress-desired)<.00001&&Math.abs(zoom-desiredZoom)<.00001&&time-lastTime<48){requestDraw();return;}
@@ -362,24 +390,21 @@ function draw(time,force=false,prepareOnly=false) {
     camera.fov=pose.fov;camera.updateProjectionMatrix();
     const reveal=Math.min(THREE.MathUtils.smoothstep(progress,.035,.075),1-THREE.MathUtils.smoothstep(progress,.9,.95));
     exhibitionGroups.forEach((group,i)=>{
-      const distance=Math.hypot(camera.position.x-group.site.x,camera.position.z-group.site.z);
-      const visible=reveal>.001&&(pose.chapter===i+1||distance<(group.visible?43:39));
+      const visible=reveal>.001&&(pose.chapter===i+1||(!motion.matches&&inExhibitionWindow(progress,i)));
       if(visible!==group.visible){group.visible=visible;group.objects.forEach(object=>object.visible=visible);}
     });
     lightArtwork(progress,pose.focus,reveal);
     if(reveal>.001)for(const item of detailMeshes){const count=detailCount(item.mesh.userData.fullDetailCount,camera.position.distanceTo(item.center),item.mesh.userData.environmentDetail);if(count!==item.mesh.count)item.mesh.count=count;}
-    $('experience').classList.toggle('is-detail',pose.focus>.35);
-    setText('view-label',pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관');
+    if(!warmOnly){$('experience').classList.toggle('is-detail',pose.focus>.35);setText('view-label',pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관');}
     if(dust) dust.rotation.y=progress*.12;
     if(!prepareOnly){
       const settled=Math.abs(progress-desired)<.0004&&Math.abs(zoom-desiredZoom)<.0004;
-      if(reflectingPool)reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter===2&&settled);
+      if(reflectingPool&&!warmOnly)reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter===2&&settled);
       try{renderer.render(scene,camera);}catch(error){if(force)throw error;failRendering(error);return;}
     }
   }
-  setText('tour-progress',Math.round(progress*100)+'%');
-  updateChapter();
-  if(!prepareOnly&&(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001||(!motion.matches&&reflectingPool?.animated&&chapter===2)))requestDraw();
+  if(!warmOnly){setText('tour-progress',Math.round(progress*100)+'%');updateChapter();}
+  if(!warmOnly&&!prepareOnly&&(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001||(!motion.matches&&reflectingPool?.animated&&chapter===2)))requestDraw();
 }
 export async function initGallery({onProgress=()=>{},shouldContinue=()=>true}={}){
   onProgress(22,'scene');if(typeof window!=='undefined')await nextPaint();
@@ -388,14 +413,13 @@ export async function initGallery({onProgress=()=>{},shouldContinue=()=>true}={}
   if(renderer.isWebGLRenderer){
     onProgress(44,'shader');await nextPaint();
     if(!await compileGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue())return null;
-    onProgress(90,'frame');await nextPaint();
+    if(!await warmGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue())return null;
+    onProgress(96,'frame');await nextPaint();
   }
   if(renderFailed||!shouldContinue())return null;
   draw(performance.now(),true);onProgress(100,'ready');
-  // Give the browser a paint opportunity before scheduling background work.
-  requestAnimationFrame(()=>setTimeout(prepareBackground,0));
   return {
-    goTo,setZoom,toggleLighting,refresh(){resize();updateScroll();},
+    goTo,setZoom,toggleLighting,refresh(){resize();measureScrollHeight();updateScroll();},
     pause(){paused=true;cancelDraw();},resume(){if(renderFailed)return;paused=false;lastTime=0;resize();updateScroll();requestDraw();},
     changeZoom(delta){setZoom(desiredZoom+delta);},
     next(){goTo(desired>.985?0:(stops.find(stop=>stop>desired+.025)??1));}

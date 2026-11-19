@@ -1,13 +1,13 @@
 import {createSurfacePixels} from './surface-textures.js';
 // Procedural architectural materials and landscaping. All geometry and maps are authored locally.
-export function createEnvironment(THREE, {mobile=false,progressive=false,onSurfaceReady=()=>{}}={}) {
+export function createEnvironment(THREE, {mobile=false,progressive=false,compact=false,onSurfaceReady=()=>{}}={}) {
   const {PI,sin,cos,pow,sqrt,floor,abs}=Math;
   function random(seed){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
   function hash(x,y,seed=1){let n=Math.imul(x,374761393)+Math.imul(y,668265263)+Math.imul(seed,1274126177);n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295;}
   const pending=new Map();let hydrationStarted=false;
   function texture(bytes,w,h,srgb=false){const t=new THREE.DataTexture(bytes,w,h);t.colorSpace=srgb?THREE.SRGBColorSpace:THREE.NoColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=2;t.needsUpdate=true;return t;}
   function surface(kind,base,seed=7,withNormal=true){
-    const n=withNormal&&!mobile?256:128,initial=progressive?32:n;
+    const n=compact?(withNormal&&!mobile?128:64):(withNormal&&!mobile?256:128),initial=progressive?32:n;
     const {albedo,normal}=createSurfacePixels(kind,base,seed,initial,withNormal);
     const map=texture(albedo,initial,initial,true),normalMap=normal?texture(normal,initial,initial):null;
     for(const t of [map,normalMap].filter(Boolean))t.repeat.set(kind==='wood'?3:kind==='floor'?12:4,kind==='wood'?1:kind==='floor'?12:4);

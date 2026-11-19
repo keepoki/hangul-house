@@ -42,6 +42,14 @@ test('worker failure falls back to individually scheduled texture upgrades',()=>
   for(let i=0;i<8;i++){assert.equal(tasks.length,1);tasks.shift()();}
   assert.equal(tasks.length,0);assert.equal(env.materials.limestone.map.image.width,128);assert.equal(env.materials.soil.map.image.width,128);
 });
+test('compact gallery textures are final-size and never start a background reallocation',()=>{
+  let updates=0;const env=createEnvironment(THREE,{compact:true,onSurfaceReady:()=>updates++});
+  assert.equal(env.materials.limestone.map.image.width,128);assert.equal(env.materials.hall.map.image.width,64);
+  const maps=Object.values(env.materials).flatMap(m=>[m.map,m.normalMap].filter(Boolean));
+  const bytes=maps.reduce((n,map)=>n+map.image.data.byteLength,0);assert.ok(bytes<500000);
+  env.hydrate({workerFactory:()=>{throw new Error('No worker should start');},schedule:()=>{throw new Error('No fallback should start');}});
+  assert.equal(updates,0);
+});
 test('mobile water still ripples without a mirror target or a second scene render',()=>{
   const scene=new THREE.Scene(),group=new THREE.Group();scene.add(group);const camera=new THREE.PerspectiveCamera();
   const pool=createReflectingPool(THREE,group,scene,{isWebGLRenderer:true,render(){throw new Error('Must not render another pass');}},11,9,true,false);

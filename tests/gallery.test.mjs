@@ -42,7 +42,7 @@ sample(0);
 
 test('the first render ignores a restored mid-tour offset and has only opening assets',()=>{
   assert.ok(initialFrame.position.distanceTo(renderedCamera.position)<.001);
-  assert.equal(initialFrame.visibleSpots,2);assert.equal(initialFrame.maxMapSize,32);
+  assert.equal(initialFrame.visibleSpots,2);assert.equal(initialFrame.maxMapSize,128);
   assert.ok(renderedScene.children.filter(o=>o.isSpotLight).every(o=>o.intensity===0));
   app.controls.refresh();settle();assert.equal(element('tour-progress').textContent,'0%');assert.equal(lastScroll.top,0);
   // A stale position is ignored through repeated scroll/resize events until genuine input.
@@ -178,21 +178,33 @@ test('the opening frame keeps foreground installations out of the architectural 
   sample(0);for(const char of tourGlyphs)assert.equal(artwork(char).visible,false);
   sample(stops[1]);assert.equal(artwork(tourGlyphs[0]).visible,true);assert.ok(tourGlyphs.some(char=>!artwork(char).visible));
 });
+test('the first gallery transition activates only the stone room, with no sudden load from other galleries',t=>{
+  const visible=()=>{const zones=[],meshes=[];renderedScene.traverseVisible(o=>{if(o.userData.exhibitionTheme)zones.push(o.userData.exhibitionTheme);if(o.isMesh)meshes.push(o);});return {zones,meshes};};
+  sample(0);const opening=visible();sample(.04);const first=visible();
+  assert.deepEqual(first.zones,['stone']);assert.ok(first.meshes.length-opening.meshes.length<=22);
+  t.diagnostic(`Opening to first gallery: ${opening.meshes.length} -> ${first.meshes.length} meshes`);
+  sample(.13);assert.deepEqual(visible().zones,['stone']);sample(.20);assert.deepEqual(visible().zones,['stone','water']);sample(.26);assert.deepEqual(visible().zones,['water']);
+  for(let p=.04;p<.95;p+=.005){sample(p);assert.ok(visible().zones.length<=2);}
+});
 test('only the pavilion shadow map remains, and no PBR or cube environment is initialized',()=>{
   sample(stops[2]);let shadows=0,heavyMaterials=0,lights=0;renderedScene.traverse(o=>{if(o.isLight){lights++;if(o.castShadow)shadows++;}if(o.isMesh&&(o.material.isMeshStandardMaterial||o.material.isMeshPhysicalMaterial))heavyMaterials++;});
   assert.equal(shadows,1);assert.equal(lights,7);assert.equal(heavyMaterials,0);assert.equal(renderedScene.environment,null);
 });
 test('the loader compiles shader families in paced batches before its first render',async()=>{
-  const events=[],steps=[];let active=true;
+  const events=[],steps=[],warmFrames=[];let active=true;
   class ShaderRenderer extends Renderer{
-    constructor(){super();this.isWebGLRenderer=true;this.extensions={has:name=>name==='KHR_parallel_shader_compile'};}
+    constructor(){super();this.isWebGLRenderer=true;this.extensions={has:name=>name==='KHR_parallel_shader_compile'};this.viewport=new Three.Vector4(0,0,1200,900);this.scissor=this.viewport.clone();}
+    setViewport(x,y,w,h){this.viewport.set(x,y,w,h);}getViewport(target){return target.copy(this.viewport);}
+    setScissor(x,y,w,h){this.scissor.set(x,y,w,h);}getScissor(target){return target.copy(this.scissor);}
+    setScissorTest(value){this.scissorTest=value;}getScissorTest(){return !!this.scissorTest;}
     async compileAsync(object,camera,scene){assert.ok(object.isMesh||object.isPoints);assert.ok(scene.isScene);events.push('compile');}
-    render(s,c){events.push('render');super.render(s,c);}
+    render(s,c){if(this.scissorTest){events.push('warm');const zones=[];s.traverseVisible(o=>{if(o.userData.exhibitionTheme)zones.push(o.userData.exhibitionTheme);});warmFrames.push(zones);assert.equal(this.viewport.z,96);assert.equal(element('tour-progress').textContent,'0%');}else{events.push('render');assert.equal(this.viewport.z,1200);}super.render(s,c);}
   }
   document.documentElement.dataset.view='loading';document.documentElement.dataset.state='loading';
   try{
     const run=await boot({...Three,WebGLRenderer:ShaderRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,0,()=>{},()=>{},callback=>{setTimeout(()=>{if(active){events.push('yield');callback(performance.now());}},0);return 1;},class{observe(){}},{now:()=>0},{reload(){}},console,{onProgress:(n,phase)=>steps.push([n,phase])});
     assert.ok(run.controls);assert.equal(events.at(-1),'render');assert.equal(events.filter(e=>e==='render').length,1);
-    assert.ok(events.filter(e=>e==='compile').length>=5);assert.ok(events.filter(e=>e==='yield').length>=3);assert.deepEqual(steps[0],[22,'scene']);assert.deepEqual(steps.at(-1),[100,'ready']);assert.ok(steps.some(([n,phase])=>phase==='frame'&&n===90));
+    assert.ok(events.filter(e=>e==='compile').length>=5);assert.ok(events.filter(e=>e==='yield').length>=9);assert.deepEqual(steps[0],[22,'scene']);assert.deepEqual(steps.at(-1),[100,'ready']);assert.ok(steps.some(([n,phase])=>phase==='frame'&&n===96));
+    assert.equal(warmFrames.length,6);assert.deepEqual(warmFrames.map(z=>z[0]),exhibitionSites.map(site=>site.theme));assert.ok(warmFrames.every(z=>z.length===1));assert.equal(element('tour-progress').textContent,'0%');
   }finally{active=false;document.documentElement.dataset.view='3d';document.documentElement.dataset.state='ready';}
 });
