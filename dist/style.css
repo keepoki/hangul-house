@@ -21,6 +21,8 @@
 .place-button:hover:not(:disabled){background:var(--paper);color:var(--bg)}
 .piece-buttons button[aria-pressed="true"]:hover{color:var(--bg)}
 @media(min-width:760px){.brand small{display:block}}
+@media(max-width:759px){.header{padding-inline:16px;gap:8px}.brand{font-size:21px;gap:6px}.brand-mark{width:30px}.help-content{position:fixed;left:16px;right:16px;top:78px;width:auto;max-height:calc(100dvh - 100px)}.journey-nav{padding:7px 8px}}
 @media(max-width:380px){.brand-mark{display:none}}
+@media(max-width:380px){.header{padding-inline:12px;gap:4px}.brand{font-size:19px}}
 @media(orientation:landscape) and (max-height:500px){.story{max-height:calc(100dvh - 110px);overflow:auto;pointer-events:auto}}
 @media(forced-colors:active){button,a,summary{forced-color-adjust:auto}.journey-nav button.active{outline:2px solid Highlight}}
