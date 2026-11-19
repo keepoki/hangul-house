@@ -3,5 +3,5 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "node server.mjs", "check": "node --check dist/gallery.js && node --check dist/camera-tour.js && node --check dist/exhibition-layout.js && node --check dist/hangul-building.js && node --check server.mjs", "test": "node --test tests/gallery.test.mjs" }
+  "scripts": { "dev": "node server.mjs", "check": "node scripts/check.mjs", "test": "node --test" }
 }

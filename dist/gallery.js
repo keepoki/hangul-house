@@ -5,26 +5,19 @@ import { buildHangulBuilding } from './hangul-building.js';
 
 const $ = (id) => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
-const chapters = [
-  {eyebrow:'THE ARCHITECTURE OF HANGUL', title:'글자가<br>공간이 되다.', body:'한글로 지은 집에서 시작해,<br>여섯 개의 다른 풍경으로 걸어갑니다.',note:'한글 건축관 · 여섯 개의 전시 공간',glyph:'ㅁ',name:'한글로 지은 집',material:'STONE · OAK · CHARCOAL'},
-  {eyebrow:'돌의 방 · STONE GALLERY', title:'시작은,<br>하나의 꺾임.', body:'거친 석재 벽과 넓은 돌바닥.<br>돌의 무게를 닮은 첫 소리를 만납니다.',note:'ㄱ · 석회암 · 시작의 모양',glyph:'ㄱ',name:'시작의 모양',material:'WARM LIMESTONE'},
-  {eyebrow:'물의 뜰 · WATER COURT', title:'비어 있어,<br>가득한 형태.', body:'고요한 수면 곁에 놓인 둥근 여백.<br>청동과 물 사이로 빛이 흐릅니다.',note:'ㅇ · 청동과 수공간 · 여백의 형태',glyph:'ㅇ',name:'여백의 형태',material:'BRONZE & STILL WATER'},
-  {eyebrow:'나무의 뜰 · TIMBER COURT', title:'마음에도,<br>방이 있다면.', body:'나무 기둥 사이, 따뜻한 공기의 결.<br>네 개의 획이 또 하나의 뜰을 만듭니다.',note:'ㅁ · 참나무 · 마음의 방',glyph:'ㅁ',name:'마음의 방',material:'OILED OAK'},
-  {eyebrow:'빛의 방 · LIGHT GALLERY', title:'소리가 빛이<br>되는 순간.', body:'짙은 벽을 따라 길게 흐르는 빛.<br>황동의 작은 획과 둥근 숨을 비춥니다.',note:'ㅎ · 황동 · 빛의 숨',glyph:'ㅎ',name:'빛의 숨',material:'BRUSHED BRASS'},
-  {eyebrow:'초록의 정원 · GREEN COURT', title:'하나의 선,<br>열린 방향.', body:'낮은 식재와 초록빛 금속 사이.<br>식물의 그림자가 새로운 방향을 그립니다.',note:'ㅏ · 녹청과 정원 · 열린 방향',glyph:'ㅏ',name:'열린 방향',material:'PATINATED METAL'},
-  {eyebrow:'고요의 방 · QUIET GALLERY', title:'서로를 향해,<br>기울어진 선.', body:'자갈의 결 위에 놓인 하얀 형태.<br>비워 둔 공간에서 두 선이 만납니다.',note:'ㅅ · 도자기와 자갈 · 서로를 향한 선',glyph:'ㅅ',name:'서로를 향한 선',material:'IVORY CERAMIC'},
-  {eyebrow:'BACK HOME · A NEW PERSPECTIVE', title:'한 바퀴,<br>새로운 시선.', body:'같은 글자, 달라진 풍경.<br>한글의 또 다른 얼굴을 발견하셨나요.',note:'글자의 집 · 빛과 형태의 수집',glyph:'ㅅ',name:'서로를 향한 선',material:'IVORY CERAMIC'}
-];
+import { chapters } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
 let bright = false, textTimer, scrollHeight = 1;
 let zoom = 1, desiredZoom = 1;
 const lamps = [];
 const sculptures = [];
+const exhibitionGroups=[];
 const stage = $('stage');
 const clamp = THREE.MathUtils.clamp;
 
 function updateScroll() {
+  if(document.documentElement.dataset.view!=='3d')return;
   scrollHeight = Math.max(1, document.documentElement.scrollHeight - innerHeight);
   desired = clamp(scrollY / scrollHeight, 0, 1);
   if (motion.matches) { progress = desired; draw(performance.now()); }
@@ -41,55 +34,30 @@ function setZoom(value) {
   $('zoom-out').disabled=desiredZoom<=.75;
   requestDraw();
 }
-$('zoom-in').addEventListener('click',()=>setZoom(desiredZoom+.15));
-$('zoom-out').addEventListener('click',()=>setZoom(desiredZoom-.15));
-$('zoom-reset').addEventListener('click',()=>setZoom(1));
-addEventListener('keydown',e=>{
-  if(e.ctrlKey||e.metaKey||e.altKey||dialog.open||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable)return;
-  if(['+','=','-','0'].includes(e.key)) {
-    e.preventDefault();setZoom(e.key==='0'?1:desiredZoom+(e.key==='-'?-.15:.15));
-  }
-});
-document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => goTo(Number(b.dataset.goto))));
-document.querySelectorAll('[data-stop]').forEach(b => b.addEventListener('click', () => goTo(stops[Number(b.dataset.stop)])));
-$('next-stop').addEventListener('click', () => goTo(desired > .985 ? 0 : (stops.find(s => s > desired + .025) ?? 1)));
-$('light-toggle').addEventListener('click', () => {
-  bright = !bright;
-  $('light-toggle').setAttribute('aria-pressed', String(bright));
-  $('light-toggle').setAttribute('aria-label', bright ? '조명을 은은하게' : '조명을 더 밝게');
-  if (renderer) renderer.toneMappingExposure = bright ? 1.75 : 1.24;
-  lamps.forEach(l => l.intensity = l.userData.base * (bright ? 1.25 : 1));
+function toggleLighting(){
+  bright=!bright;
+  $('light-toggle').setAttribute('aria-pressed',String(bright));
+  $('light-toggle').setAttribute('aria-label',bright?'조명을 은은하게':'조명을 더 밝게');
+  if(renderer)renderer.toneMappingExposure=bright?1.6:1.18;
   requestDraw();
-});
-const dialog = $('about-dialog');
-$('about-open').addEventListener('click', () => dialog.showModal());
-$('about-close').addEventListener('click', () => dialog.close());
-dialog.addEventListener('click', e => { if (e.target === dialog) { const r=dialog.getBoundingClientRect(); if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) dialog.close(); } });
-addEventListener('scroll', updateScroll, { passive:true });
+}
 
-function updateChapter() {
-  const index = chapterAt(progress);
-  if (index === chapter) return;
-  chapter = index;
-  const data = chapters[index];
-  const story = document.querySelector('.story');
-  story.classList.add('changing');
-  clearTimeout(textTimer);
-  textTimer = setTimeout(() => {
-    $('eyebrow').textContent = data.eyebrow;
-    $('story-title').innerHTML = data.title;
-    $('story-body').innerHTML = data.body;
-    $('story-note').textContent = data.note;
-    $('work-glyph').textContent = data.glyph;
-    $('work-name').textContent = data.name;
-    $('work-material').textContent = data.material;
-    story.classList.remove('changing');
-  }, chapter === 0 || motion.matches ? 0 : 160);
-  document.querySelectorAll('[data-stop]').forEach((b,i) => {
-    b.classList.toggle('active', i===index);
-    if(i===index) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current');
+function updateChapter(){
+  const index=chapterAt(progress);if(index===chapter)return;chapter=index;
+  const data=chapters[index];
+  $('room-context').textContent=data.context;
+  $('story-title').innerHTML=data.title;
+  $('story-body').innerHTML=data.body;
+  $('story-note').textContent=data.note;
+  $('work-glyph').textContent=data.glyph;
+  $('work-name').textContent=data.name;
+  $('work-material').textContent=data.material;
+  $('story-action').hidden=index!==7;
+  document.querySelectorAll('[data-stop]').forEach((button,i)=>{
+    button.classList.toggle('active',i===index);
+    if(i===index)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');
   });
-  $('scroll-label').innerHTML = index===7 ? '처음으로 돌아가기<small>BACK TO THE HOUSE</small>' : index===0 ? '스크롤하며 작품 가까이<small>SCROLL TO DISCOVER</small>' : '천천히, 다음 작품으로<small>CONTINUE THE JOURNEY</small>';
+  $('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
 }
 
 // All architecture, lettering, materials and lighting are generated locally.
@@ -160,11 +128,11 @@ function setup() {
   camera=new THREE.PerspectiveCamera(35,1,.1,150);
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
   renderer.setClearColor('#10100f',0);renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<761?1.5:1.75));renderer.outputColorSpace=THREE.SRGBColorSpace;
-  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.24;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();$('fallback').hidden=false;});
-  renderer.domElement.addEventListener('webglcontextrestored',()=>location.reload());
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();dispatchEvent(new CustomEvent('museum:failure',{detail:new Error('WebGL context lost')}));});
+  renderer.domElement.addEventListener('webglcontextrestored',()=>{ /* Recovery is user-initiated, preserving workshop state. */ });
   house=new THREE.Group();scene.add(house);
   scene.fog.density=.009;
   const limestone=material('#ede1c9',.76,.02,stoneTexture([231,224,207],22));
@@ -213,6 +181,7 @@ function setup() {
   const gravel=material('#a8a193',.96,0,stoneTexture([178,172,157],75));
   const displayMaterials={'ㄱ':ivory,'ㅇ':bronze,'ㅁ':timber,'ㅎ':gold,'ㅏ':green,'ㅅ':ceramic};
   for(const site of exhibitionSites) {
+    const groupStart=house.children.length,sceneStart=scene.children.length;
     const zone=new THREE.Group();zone.position.set(site.x,0,site.z);zone.rotation.y=site.rot;zone.name=site.room;zone.userData.exhibitionTheme=site.theme;house.add(zone);
     box(11.5,.2,10.2,site.theme==='quiet'?gravel:limestone,0,.04,0,zone);
     if(site.theme==='stone'){
@@ -277,6 +246,19 @@ function setup() {
     const fixture=mesh(new THREE.CylinderGeometry(.16,.16,.48,16),blackMetal,spot.position.x,9.57,spot.position.z);
     fixture.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),target.position.clone().sub(fixture.position).normalize());
     box(4,.08,.1,blackMetal,spot.position.x,9.95,spot.position.z);
+    const objects=house.children.slice(groupStart),materialCache=new Map(),fading=[];
+    objects.forEach(root=>root.traverse(object=>{
+      if(!object.isMesh)return;
+      const original=object.material;
+      if(!materialCache.has(original)){
+        const copy=original.clone();
+        fading.push({material:copy,opacity:original.opacity,transparent:original.transparent,depthWrite:original.depthWrite});
+        materialCache.set(original,copy);
+      }
+      object.material=materialCache.get(original);
+    }));
+    exhibitionGroups.push({objects,fading,visible:true,lighting:scene.children.slice(sceneStart).filter(object=>object.isLight)});
+
   }
   scene.add(new THREE.HemisphereLight('#d4d9da','#534531',.8));
   scene.add(new THREE.AmbientLight('#c5beb2',.2));
@@ -301,7 +283,7 @@ function setup() {
   resize();
   renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
   updateScroll();requestDraw();
-  requestAnimationFrame(() => $('loading').classList.add('loaded'));
+  draw(performance.now(),true);
 }
 
 function resize() {
@@ -311,11 +293,14 @@ function resize() {
 }
 new ResizeObserver(resize).observe(stage);
 addEventListener('resize',updateScroll,{passive:true});
+addEventListener('scroll',updateScroll,{passive:true});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(frame)cancelAnimationFrame(frame);frame=0;}else requestDraw();});
 motion.addEventListener('change',()=>{progress=desired;requestDraw();});
 
-function requestDraw(){if(!frame)frame=requestAnimationFrame(draw);}
-function draw(time) {
+function requestDraw(){if(!frame&&!document.hidden&&document.documentElement.dataset.view==='3d')frame=requestAnimationFrame(draw);}
+function draw(time,force=false) {
   frame=0;
+  if(!force&&(document.documentElement.dataset.view!=='3d'||document.hidden))return;
   const dt=Math.min(.05,(time-lastTime)/1000||.016);lastTime=time;
   progress=motion.matches?desired:THREE.MathUtils.damp(progress,desired,7,dt);
   zoom=motion.matches?desiredZoom:THREE.MathUtils.damp(zoom,desiredZoom,9,dt);
@@ -327,21 +312,31 @@ function draw(time) {
     camera.position.fromArray(pose.position);camera.lookAt(...pose.target);
     camera.fov=pose.fov;camera.updateProjectionMatrix();
     const selected=chapters[pose.chapter].glyph;
-    lamps.forEach(l=>{const accent=l.userData.artGlyph===selected?1+pose.focus*.2:1-pose.focus*.48;l.intensity=l.userData.base*accent*(bright?1.25:1);});
+    const reveal=Math.min(THREE.MathUtils.smoothstep(progress,.035,.075),1-THREE.MathUtils.smoothstep(progress,.9,.95));
+    exhibitionGroups.forEach(group=>{
+      const visible=reveal>.001;
+      if(visible&&!group.visible)renderer.shadowMap.needsUpdate=true;
+      group.visible=visible;
+      group.objects.forEach(object=>object.visible=visible);
+      group.fading.forEach(item=>{item.material.opacity=item.opacity*reveal;item.material.transparent=reveal<.999||item.transparent;item.material.depthWrite=reveal<.999?false:item.depthWrite;});
+      group.lighting.filter(light=>!light.isSpotLight).forEach(light=>{light.userData.restIntensity??=light.intensity;light.intensity=light.userData.restIntensity*reveal;});
+    });
+    lamps.forEach(l=>{const accent=l.userData.artGlyph===selected?1+pose.focus*.2:1-pose.focus*.48;l.intensity=l.userData.base*accent*(bright?1.2:1)*reveal;});
     $('experience').classList.toggle('is-detail',pose.focus>.35);
     $('view-label').textContent=pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관';
     if(dust) dust.rotation.y=progress*.12;
     renderer.render(scene,camera);
   }
-  $('angle').textContent=`${Math.round(progress*100)}%`;
-  $('zoom-value').textContent=`${Math.round(zoom*100)}%`;
-  $('orbit-point').style.transform=`rotate(${progress*360}deg)`;
-  $('page-progress').style.width=`${progress*100}%`;
-  $('nav-progress').style.width=`${progress*100}%`;
+  $('tour-progress').textContent=Math.round(progress*100)+'%';
+  $('zoom-value').textContent=Math.round(zoom*100)+'%';
   updateChapter();
   if(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001)requestDraw();
 }
-try { setup(); } catch(error) {
-  console.error('The gallery could not initialize:',error);
-  $('fallback').hidden=false;$('loading').classList.add('loaded');updateScroll();
+export function initGallery(){
+  setup();
+  return {
+    goTo,setZoom,toggleLighting,refresh(){resize();updateScroll();},
+    changeZoom(delta){setZoom(desiredZoom+delta);},
+    next(){goTo(desired>.985?0:(stops.find(stop=>stop>desired+.025)??1));}
+  };
 }

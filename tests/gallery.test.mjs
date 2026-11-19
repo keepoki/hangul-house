@@ -5,9 +5,10 @@ import * as Three from '../dist/assets/three.module.js';
 import { sampleTour, chapterAt, tourStops as stops, tourGlyphs } from '../dist/camera-tour.js';
 import { exhibitionSites } from '../dist/exhibition-layout.js';
 import { buildHangulBuilding } from '../dist/hangul-building.js';
+import { chapters } from '../dist/exhibition-content.js';
 
 // Construct the actual scene with a non-GPU renderer so camera framing can be checked.
-const source=(await readFile(new URL('../dist/gallery.js',import.meta.url),'utf8')).replace(/^import[^;]+;\s*/gm,'');
+const source=(await readFile(new URL('../dist/gallery.js',import.meta.url),'utf8')).replace(/^import[^;]+;\s*/gm,'').replace(/^export\s+/gm,'');
 const handlers=new Map(),elements=new Map();
 function element(id='') {
   if(elements.has(id))return elements.get(id);
@@ -16,7 +17,7 @@ function element(id='') {
 }
 const context={createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){},fillRect(){},beginPath(){},moveTo(){},bezierCurveTo(){},stroke(){},fillText(){}};
 const canvas=()=>({width:0,height:0,getContext:()=>context});
-const document={getElementById:element,querySelector:element,querySelectorAll:()=>[],createElement:canvas,documentElement:{scrollHeight:6300}};
+const document={getElementById:element,querySelector:element,querySelectorAll:()=>[],createElement:canvas,addEventListener(){},hidden:false,documentElement:{scrollHeight:6300,dataset:{view:'3d'}}};
 let renderedScene,renderedCamera,lastScroll,clock=0;
 class Renderer {
   constructor(){this.domElement=element('canvas');this.shadowMap={};}
@@ -25,8 +26,8 @@ class Renderer {
 }
 const THREE={...Three,WebGLRenderer:Renderer},errors=[];
 const media={matches:false,addEventListener(){}};
-const boot=new Function('THREE','sampleTour','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nreturn {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw};');
-const app=boot(THREE,sampleTour,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
+const boot=new Function('THREE','sampleTour','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nconst controls=initGallery();return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};');
+const app=boot(THREE,sampleTour,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,chapters,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
 function sample(p){clock+=17;return app.sample(p,clock);}
 function settle(){for(let i=0;i<100;i++){clock+=17;app.tick(clock);}}
 function artwork(char){let found;renderedScene.traverse(o=>{if(o.userData.artGlyph===char&&o.isGroup)found=o;});return found;}
@@ -63,16 +64,16 @@ test('mobile close-ups fit all six complete sculptures',()=>{
 test('zoom buttons dolly closer, respect limits and restore the current view',()=>{
   sample(stops[2]);const target=new Three.Vector3(...sampleTour(stops[2]).target);
   const before=renderedCamera.position.distanceTo(target);
-  handlers.get('zoom-in:click')();settle();
+  app.controls.changeZoom(.15);settle();
   assert.ok(renderedCamera.position.distanceTo(target)<before*.9);
   assert.equal(element('zoom-value').textContent,'115%');
-  for(let i=0;i<20;i++)handlers.get('zoom-in:click')();settle();
+  for(let i=0;i<20;i++)app.controls.changeZoom(.15);settle();
   assert.equal(element('zoom-value').textContent,'180%');assert.equal(element('zoom-in').disabled,true);
-  handlers.get('zoom-reset:click')();settle();assert.equal(element('zoom-value').textContent,'100%');
+  app.controls.setZoom(1);settle();assert.equal(element('zoom-value').textContent,'100%');
   assert.ok(Math.abs(renderedCamera.position.distanceTo(target)-before)<.001);
-  for(let i=0;i<20;i++)handlers.get('zoom-out:click')();settle();
+  for(let i=0;i<20;i++)app.controls.changeZoom(-.15);settle();
   assert.equal(element('zoom-value').textContent,'75%');assert.equal(element('zoom-out').disabled,true);
-  handlers.get('zoom-reset:click')();settle();
+  app.controls.setZoom(1);settle();
 });
 test('clicking a sculpture navigates to its close-up',()=>{
   sample(.075);
@@ -123,4 +124,8 @@ test('walls and scenery do not block the close-up camera',()=>{
     let selected=hit?.object;while(selected&&!selected.userData.artGlyph)selected=selected.parent;
     assert.equal(selected?.userData.artGlyph,exhibitionSites[i].char,'The work must be visible in front of its backdrop');
   }
+});
+test('the opening frame keeps foreground installations out of the architectural view',()=>{
+  sample(0);for(const char of tourGlyphs)assert.equal(artwork(char).visible,false);
+  sample(stops[1]);for(const char of tourGlyphs)assert.equal(artwork(char).visible,true);
 });

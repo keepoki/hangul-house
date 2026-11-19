@@ -28,6 +28,15 @@ const poses = [
 ];
 const mix = (a,b,t) => a+(b-a)*t;
 const smootherstep = t => t*t*t*(t*(t*6-15)+10);
+function flow(i,t,key){
+  const a=poses[i],b=poses[i+1],dt=b[0]-a[0];
+  function tangent(k,axis){
+    if(k===0||k===poses.length-1)return 0;
+    const previous=poses[k-1],next=poses[k+1],linger=poses[k][4]===1?.16:.75;
+    return (next[key][axis]-previous[key][axis])/(next[0]-previous[0])*dt*linger;
+  }
+  return a[key].map((v,j)=>(2*t*t*t-3*t*t+1)*v+(t*t*t-2*t*t+t)*tangent(i,j)+(-2*t*t*t+3*t*t)*b[key][j]+(t*t*t-t*t)*tangent(i+1,j));
+}
 export function chapterAt(progress) {
   let chapter=0;
   for(let i=1;i<chapterStarts.length;i++)if(progress>=chapterStarts[i])chapter=i;
@@ -39,11 +48,11 @@ export function sampleTour(progress, {mobile=false, reducedMotion=false, zoom=1}
   let i=0;
   while(i<poses.length-2&&p>poses[i+1][0])i++;
   const a=poses[i],b=poses[i+1];
-  const t=smootherstep(Math.min(1,Math.max(0,(p-a[0])/(b[0]-a[0]))));
-  const position=a[1].map((v,j)=>mix(v,b[1][j],t));
-  const target=a[2].map((v,j)=>mix(v,b[2][j],t));
+  const rawT=Math.min(1,Math.max(0,(p-a[0])/(b[0]-a[0]))),t=smootherstep(rawT);
+  const position=flow(i,rawT,1);
+  const target=flow(i,rawT,2);
   const focus=mix(a[4],b[4],t);
-  const distanceScale=(mobile?mix(1.12,1.03,focus):1)/Math.min(1.8,Math.max(.75,zoom));
+  const distanceScale=(mobile?mix(.9,1.03,focus):1)/Math.min(1.8,Math.max(.75,zoom));
   for(let j=0;j<3;j++)position[j]=target[j]+(position[j]-target[j])*distanceScale;
-  return {position,target,fov:mix(a[3],b[3],t)+(mobile?7:0),focus,chapter:chapterAt(raw)};
+  return {position,target,fov:mix(a[3],b[3],t)+(mobile?7*focus:0),focus,chapter:chapterAt(raw)};
 }

@@ -1,47 +1,96 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-view="static" data-state="loading">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#10100f">
-  <meta name="description" content="한글로 지은 집과 여섯 개의 독립된 전시 공간. 스크롤하며 돌의 방, 물의 뜰, 나무의 뜰, 빛의 방, 초록의 정원, 고요의 방을 여행하세요.">
-  <title>글자의 집 — A House of Hangul</title>
-  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#11120f">
+<meta name="description" content="한글의 선이 기둥과 지붕이 되는 디지털 전시. 여섯 공간을 둘러보고, 중력과 충돌이 있는 한글 작업실에서 나만의 집을 지어보세요.">
+<title>글자의 집 — 한글의 선으로 공간을 짓다</title>
+<link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./style.css">
+<link rel="preload" href="./assets/gowun-batang.ttf" as="font" type="font/ttf" crossorigin>
 </head>
-<body>
-  <a class="skip" href="#journey">관람 구간으로 이동</a>
-  <div class="loading" id="loading"><span class="loading-glyph">ㅎ</span><span>글자의 집에 빛을 켜는 중</span></div>
-  <div class="experience" id="experience">
-    <div class="atmosphere" aria-hidden="true"></div>
-    <div id="stage" role="img" aria-label="넓은 전시관 중앙에 한글로 지은 집이 있고, 여섯 한글 조형물은 서로 다른 전시 구역에 떨어져 배치되어 있습니다. 스크롤하며 각 공간과 작품을 감상하거나 하단 글자 버튼으로 이동하세요."></div>
-    <div class="vignette" aria-hidden="true"></div>
-    <header class="header">
-      <a class="brand" href="#home" aria-label="글자의 집 처음으로"><span class="brand-symbol" aria-hidden="true">ㅎ</span><span>글자의 집<small>A HOUSE OF HANGUL</small></span></a>
-      <nav aria-label="주 메뉴"><button type="button" data-goto="0">공간</button><button type="button" data-goto="0.13">조형</button><button type="button" id="about-open">관람 안내</button></nav>
-      <button class="light-toggle" id="light-toggle" type="button" aria-pressed="false" aria-label="조명을 더 밝게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>조명</span></button>
-    </header>
-    <main class="story" aria-live="polite" aria-atomic="true">
-      <p class="eyebrow" id="eyebrow">THE ARCHITECTURE OF HANGUL</p>
-      <h1 id="story-title">글자가<br>공간이 되다.</h1>
-      <p class="story-body" id="story-body">한글로 지은 집에서 시작해,<br>여섯 개의 다른 풍경으로 걸어갑니다.</p>
-      <div class="story-rule" aria-hidden="true"></div>
-      <p class="story-note" id="story-note">한글 건축관 · 여섯 개의 전시 공간</p>
-    </main>
-    <div class="work-caption" id="work-caption" aria-hidden="true"><span id="work-glyph">ㅇ</span><div><span id="work-name">여백의 형태</span><small id="work-material">PATINATED BRONZE</small></div></div>
-    <div class="orbit-indicator" aria-label="관람 진행률"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="29"/><path d="M36 2v8M36 62v8M2 36h8M62 36h8"/><circle class="orbit-point" id="orbit-point" cx="36" cy="7" r="3"/></svg><span id="angle">0%</span><small>THROUGH THE HOUSE</small></div>
-    <div class="view-controls" role="group" aria-label="화면 확대 및 축소"><span class="view-label" id="view-label">한글 건축관</span><div class="zoom-buttons"><button type="button" id="zoom-out" aria-label="축소" title="축소 (−)">−</button><output id="zoom-value" aria-label="확대 배율">100%</output><button type="button" id="zoom-in" aria-label="확대" title="확대 (+)">+</button></div><button type="button" id="zoom-reset" class="zoom-reset" title="확대 배율 복원 (0)">배율 복원</button></div>
-    <footer class="controls">
-      <button class="scroll-cue" id="next-stop" type="button"><span class="mouse" aria-hidden="true"><i></i></span><span id="scroll-label">스크롤하며 작품 가까이<small>SCROLL TO DISCOVER</small></span></button>
-      <nav class="journey-nav" aria-label="관람 시점 선택"><button type="button" data-stop="0" class="active" aria-current="step" aria-label="집 전체 보기">집</button><button type="button" data-stop="1" aria-label="기역 클로즈업, 시작의 모양">ㄱ</button><button type="button" data-stop="2" aria-label="이응 클로즈업, 여백의 형태">ㅇ</button><button type="button" data-stop="3" aria-label="미음 클로즈업, 마음의 방">ㅁ</button><button type="button" data-stop="4" aria-label="히읗 클로즈업, 빛의 숨">ㅎ</button><button type="button" data-stop="5" aria-label="아 클로즈업, 열린 방향">ㅏ</button><button type="button" data-stop="6" aria-label="시옷 클로즈업, 서로를 향한 선">ㅅ</button><button type="button" data-stop="7" aria-label="다시, 글자의 집">집</button><span class="nav-progress" id="nav-progress" aria-hidden="true"></span></nav>
-      <span class="collection-label">COLLECTION OF CHARACTERS<br><span>HANGUL · LIGHT · SPACE</span></span>
-    </footer>
-    <div class="page-progress" aria-hidden="true"><span id="page-progress"></span></div>
-    <div class="fallback" id="fallback" hidden><div class="fallback-house" aria-hidden="true"><span>ㄱ</span><span>ㅇ</span><span>ㅁ</span><span>ㅎ</span></div><p>이 브라우저에서는 3D 화면을 열 수 없어요.<br>WebGL을 지원하는 브라우저로 다시 방문해 주세요.</p></div>
-  </div>
-  <div class="scroll-track" id="journey" aria-label="스크롤 관람 경로"><section id="home" aria-label="집 전체"><h2 class="sr-only">글자가 머무는 집</h2></section><section aria-label="기역의 방"><h2 class="sr-only">ㄱ, 시작의 모양</h2></section><section aria-label="이응의 방"><h2 class="sr-only">ㅇ, 여백의 형태</h2></section><section aria-label="미음의 방"><h2 class="sr-only">ㅁ, 마음의 방</h2></section><section aria-label="히읗의 방"><h2 class="sr-only">ㅎ, 빛의 숨</h2></section><section aria-label="모음의 방"><h2 class="sr-only">ㅏ, 열린 방향</h2></section><section aria-label="시옷의 방"><h2 class="sr-only">ㅅ, 서로를 향한 선</h2></section><section aria-label="다시 집으로"><h2 class="sr-only">한 바퀴, 새로운 시선</h2></section></div>
-  <dialog id="about-dialog" aria-labelledby="about-title"><button class="dialog-close" id="about-close" type="button" aria-label="관람 안내 닫기">닫기 <span aria-hidden="true">×</span></button><p class="eyebrow">VISITING THE HOUSE</p><h2 id="about-title">천천히,<br>가까이.</h2><p>글자의 집은 한글의 형태를 건축과 풍경으로 탐구하는 디지털 박물관입니다. 중앙의 한글 건축물을 중심으로 돌·물·나무·빛·정원·자갈을 주제로 한 여섯 전시 구역이 각각 놓여 있습니다. 조형물과 공간은 이 전시를 위해 창작했습니다.</p><dl><dt>관람 방법</dt><dd>아래로 스크롤하면 전시 구역 사이를 이동하고, 각 작품의 눈높이로 다가가 가까이 감상합니다. 위로 스크롤하면 관람 경로를 되짚을 수 있어요.</dd><dt>작품 바로 보기</dt><dd>조형물 또는 화면 아래 글자를 누르면 해당 작품을 클로즈업합니다. 키보드의 Page Down·Page Up으로도 관람할 수 있습니다.</dd><dt>확대와 축소</dt><dd>오른쪽 +·− 버튼으로 더 가까이 보거나 물러나세요. ‘배율 복원’으로 원래 배율로 돌아옵니다. 키보드 +·−·0도 사용할 수 있어요.</dd><dt>빛의 분위기</dt><dd>오른쪽 위 ‘조명’ 버튼으로 은은한 빛과 밝은 빛을 바꿀 수 있어요.</dd></dl><p class="dialog-footnote">소리를 켜지 않아도 온전히 감상할 수 있는 공간.</p></dialog>
-  <noscript><p class="noscript">이 전시는 JavaScript가 필요합니다. 브라우저에서 JavaScript를 켜주세요.</p></noscript>
-  <script type="module" src="./gallery.js"></script>
-</body>
-</html>
+<body id="home">
+<a class="skip" href="#text-tour">전시 설명으로 바로 가기</a>
+<div class="experience" id="experience">
+<header class="header">
+<a class="brand" href="#home" aria-label="글자의 집 처음으로"><span class="brand-mark" aria-hidden="true">ㅎ</span><span>글자의 집<small>A House of Hangul</small></span></a>
+<nav class="header-nav" aria-label="주 메뉴">
+<button class="desktop-link" type="button" data-goto="0">공간 보기</button>
+<button class="desktop-link" type="button" data-goto="0.13">작품 보기</button>
+<details class="help-menu" id="help-menu"><summary>관람 안내</summary><div class="help-content">
+<h2>천천히, 가까이.</h2>
+<p>스크롤하면 전시 구역 사이를 이동하고, 각 글자의 눈높이까지 다가갑니다. 위로 스크롤하면 되짚어 볼 수 있어요.</p>
+<p>아래 글자를 누르거나 작품을 클릭하면 바로 가까이 볼 수 있습니다. 확대는 +·− 버튼, 키보드는 +·−·0을 사용하세요.</p>
+<p>‘직접 짓기’에서는 글자 조각을 끌어 집을 만듭니다. 드래그 대신 조각을 선택하고 ‘맞춰 놓기’를 눌러도 됩니다.</p>
+<button class="text-link" type="button" data-show-text>전시를 글로 읽기</button>
+<a class="text-link" href="#credits" data-credits>제작 정보와 라이선스</a>
+</div></details>
+<button class="workshop-link" type="button" data-open-workshop hidden>직접 짓기</button>
+</nav>
+<button class="light-toggle" id="light-toggle" type="button" aria-pressed="false" aria-label="조명을 더 밝게" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><span>조명</span></button>
+</header>
+<div class="scene-wrap">
+<img class="scene-poster" id="scene-poster" src="./assets/house-plan.svg" alt="ㄱ 기둥과 처마, ㅅ 지붕, ㅁ 입구, ㅇ 창으로 구성한 한글 집의 정면도." width="800" height="500">
+<div id="stage" role="img" aria-label="넓은 전시관 중앙의 한글 건축물과, 돌·물·나무·빛·정원·자갈을 주제로 독립 배치된 여섯 한글 조형물."></div>
+<p class="load-status" id="load-status" role="status">3D 전시를 준비하고 있습니다.</p>
+<div class="view-controls" role="group" aria-label="전시 화면 확대 및 축소">
+<button type="button" id="zoom-out" aria-label="축소" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+<output id="zoom-value" aria-label="확대 배율">100%</output>
+<button type="button" id="zoom-in" aria-label="확대" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+<button type="button" id="zoom-reset" disabled>배율 복원</button>
+</div></div>
+<div class="vignette" aria-hidden="true"></div>
+<main class="story" aria-live="polite" aria-atomic="true">
+<h1 id="story-title">한글의 선으로<br>공간을 짓다.</h1>
+<p class="story-body" id="story-body">ㄱ은 기둥과 처마로, ㅅ은 지붕으로.<br>익숙한 글자가 건축이 되는 전시입니다.</p>
+<p class="room-context" id="room-context">한글 건축관</p>
+<p class="story-note" id="story-note">아래로 스크롤해 여섯 공간을 만나보세요.</p>
+<button class="story-action" id="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button>
+<div class="failure-actions" id="failure-actions" hidden><button type="button" id="retry-gallery">3D 다시 열기</button><a href="#text-tour">전시 설명 읽기</a></div>
+</main>
+<div class="work-caption" id="work-caption" aria-hidden="true"><span id="work-glyph">ㅁ</span><div><span id="work-name">한글로 지은 집</span><small id="work-material">석재 · 참나무 · 짙은 돌</small></div></div>
+<footer class="controls">
+<button class="scroll-cue" id="next-stop" type="button"><svg viewBox="0 0 22 30" aria-hidden="true"><rect x="3" y="2" width="16" height="26" rx="8"/><path d="M11 7v6"/></svg><span id="scroll-label">아래로 스크롤해 관람</span></button>
+<nav class="journey-nav" aria-label="전시 공간 선택">
+<button type="button" data-stop="0" class="active" aria-current="step" aria-label="한글 건축관">집</button>
+<button type="button" data-stop="1" aria-label="돌의 방, 기역">ㄱ</button>
+<button type="button" data-stop="2" aria-label="물의 뜰, 이응">ㅇ</button>
+<button type="button" data-stop="3" aria-label="나무의 뜰, 미음">ㅁ</button>
+<button type="button" data-stop="4" aria-label="빛의 방, 히읗">ㅎ</button>
+<button type="button" data-stop="5" aria-label="초록의 정원, 아">ㅏ</button>
+<button type="button" data-stop="6" aria-label="고요의 방, 시옷">ㅅ</button>
+<button type="button" data-stop="7" aria-label="관람 마무리와 한글 작업실">짓기</button>
+</nav><div class="journey-status"><span id="view-label">한글 건축관</span><output id="tour-progress" aria-label="관람 진행률">0%</output></div>
+</footer></div>
+<div class="scroll-track" id="journey" aria-hidden="true"></div>
+<section class="text-tour" id="text-tour" aria-labelledby="text-tour-title">
+<div class="text-tour-heading"><h2 id="text-tour-title">선에서 공간으로.</h2><p>스크롤로 만나는 여섯 개의 전시 공간입니다. 3D를 열 수 없어도 글자의 형태와 전시의 의미를 읽을 수 있습니다.</p><button type="button" class="resume-button" id="resume-gallery" hidden>3D 관람으로 돌아가기</button></div>
+<section class="text-room" id="room-stone"><span class="text-glyph" aria-hidden="true">ㄱ</span><div><h3>돌의 방</h3><p>ㄱ의 가로선은 처마가 되고, 세로선은 그 아래의 공간을 받칩니다. 석회암의 무게와 선의 방향을 함께 감상합니다.</p></div></section>
+<section class="text-room" id="room-water"><span class="text-glyph" aria-hidden="true">ㅇ</span><div><h3>물의 뜰</h3><p>ㅇ의 가운데를 비우자 창이 생깁니다. 청동의 둥근 틈 너머로 물과 빛이 이어지고, 비워 둔 곳에 풍경이 담깁니다.</p></div></section>
+<section class="text-room" id="room-wood"><span class="text-glyph" aria-hidden="true">ㅁ</span><div><h3>나무의 뜰</h3><p>ㅁ의 네 방향이 하나의 방을 만듭니다. 가운데를 열면 누구나 드나드는 입구가 됩니다. 닫힌 글자가 열린 공간으로 바뀝니다.</p></div></section>
+<section class="text-room" id="room-light"><span class="text-glyph" aria-hidden="true">ㅎ</span><div><h3>빛의 방</h3><p>ㅎ의 짧은 선과 둥근 형태를 나누어 봅니다. 황동의 표면과 틈마다 다른 방향의 빛이 닿습니다.</p></div></section>
+<section class="text-room" id="room-garden"><span class="text-glyph" aria-hidden="true">ㅏ</span><div><h3>초록의 정원</h3><p>ㅏ의 곧은 선은 기둥이 되고, 옆으로 뻗은 선은 정원으로 향하는 길이 됩니다. 식물의 유연한 선과 금속의 곧은 선을 비교합니다.</p></div></section>
+<section class="text-room" id="room-quiet"><span class="text-glyph" aria-hidden="true">ㅅ</span><div><h3>고요의 방</h3><p>서로 기대는 ㅅ의 두 선. 기울어진 획 아래에 사람이 머물 자리가 생깁니다. 지붕과 글자가 공유하는 형태를 발견해보세요.</p></div></section>
+<section class="text-finale"><h2>이제, 당신의 집.</h2><p>입구가 된 ㅁ, 지붕이 된 ㅅ, 창이 된 ㅇ. 세 조각을 직접 옮겨 집 한 채를 지어보세요.</p><button class="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button></section>
+<footer class="credits" id="credits"><h2>제작 정보</h2><p>한글의 형태를 건축과 풍경으로 확장하는 창작 디지털 전시입니다. 건축물·조형물·텍스처는 코드로 구성했으며, 물리 체험의 무게와 탄성은 전시를 위한 가상 값입니다.</p><p>3D 렌더링: Three.js · MIT License<br>물리 시뮬레이션: Cannon-es · MIT License<br>제목 서체: 고운바탕 · SIL Open Font License</p><details><summary>외부 코드와 서체의 라이선스 고지</summary><div id="license-notices"><p>라이선스 원문은 배포 파일에 함께 포함되어 있습니다.</p><button type="button" id="load-licenses">라이선스 원문 펼치기</button></div></details><p class="credits-note">소리 없이도 온전히 감상할 수 있습니다. 모든 관람과 체험은 이 페이지 안에서 이어집니다.</p></footer></section>
+<dialog class="workshop-dialog" id="workshop-dialog" aria-labelledby="workshop-title">
+<div class="workshop-heading"><div><h2 id="workshop-title">한글로 집 짓기</h2><p>ㅁ은 입구, ㅅ은 지붕, ㅇ은 창이 됩니다.</p></div><button class="dialog-close" id="workshop-close" type="button" aria-label="작업실 닫고 전시로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+<p id="workshop-hint">조각을 끌어 윤곽에 맞춰보세요. 글자를 선택한 뒤 ‘맞춰 놓기’를 눌러도 됩니다.</p>
+<div class="workshop-board"><canvas id="workshop-canvas" tabindex="0" aria-label="중력과 충돌이 적용되는 한글 조립 작업대" aria-describedby="workshop-hint workshop-status"></canvas><p id="workshop-loading" role="status">글자 조각을 준비하고 있습니다.</p></div>
+<p class="workshop-status" id="workshop-status" role="status" aria-live="polite">세 조각으로 집을 완성해보세요.</p>
+<div class="workshop-tools"><div class="piece-buttons" role="group" aria-label="조립할 글자 선택"><button type="button" data-piece="0" aria-pressed="true">ㅁ 입구</button><button type="button" data-piece="1" aria-pressed="false">ㅅ 지붕</button><button type="button" data-piece="2" aria-pressed="false">ㅇ 창</button></div><button class="place-button" id="place-piece" type="button" disabled>맞춰 놓기</button></div>
+<div class="workshop-options"><label><input type="checkbox" id="gravity-toggle" checked> 중력 켜기</label><button type="button" id="reset-workshop">다시 짓기</button><button type="button" id="retry-workshop" hidden>작업실 다시 열기</button></div>
+<p class="workshop-note">가벼운 나무, 단단한 돌, 묵직한 황동. 충돌과 탄성은 가상 물성입니다. 키보드는 1·2·3으로 선택, Enter로 배치합니다.</p></dialog>
+<noscript><style>.load-status{display:none}</style><p class="no-script-note">현재 글로 읽는 전시입니다. JavaScript를 켜면 3D 관람과 한글 작업실을 이용할 수 있습니다.</p></noscript>
+<script type="module">
+import('./interface.js').then(async ({initInterface}) => {
+ const ui=initInterface();
+ try {const gallery=await import('./gallery.js');if(ui.wantsText())return;document.documentElement.dataset.view='3d';ui.attach(gallery.initGallery());}
+ catch(error){ui.fail(error);}
+}).catch(()=>{
+ document.documentElement.dataset.view='static';document.documentElement.dataset.state='error';
+ document.getElementById('load-status').textContent='3D 전시를 열지 못했습니다. 아래 전시 설명은 계속 읽을 수 있습니다.';
+ document.getElementById('failure-actions').hidden=false;
+});
+</script></body></html>
