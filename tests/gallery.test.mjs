@@ -6,6 +6,7 @@ import { sampleTour, chapterAt, tourStops as stops, tourGlyphs } from '../dist/c
 import { exhibitionSites } from '../dist/exhibition-layout.js';
 import { buildHangulBuilding } from '../dist/hangul-building.js';
 import { chapters } from '../dist/exhibition-content.js';
+import { createEnvironment, createReflectingPool } from '../dist/environment.js';
 
 // Construct the actual scene with a non-GPU renderer so camera framing can be checked.
 const source=(await readFile(new URL('../dist/gallery.js',import.meta.url),'utf8')).replace(/^import[^;]+;\s*/gm,'').replace(/^export\s+/gm,'');
@@ -26,8 +27,8 @@ class Renderer {
 }
 const THREE={...Three,WebGLRenderer:Renderer},errors=[];
 const media={matches:false,addEventListener(){}};
-const boot=new Function('THREE','sampleTour','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nconst controls=initGallery();return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};');
-const app=boot(THREE,sampleTour,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,chapters,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
+const boot=new Function('THREE','sampleTour','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nconst controls=initGallery();return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};');
+const app=boot(THREE,sampleTour,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,chapters,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
 function sample(p){clock+=17;return app.sample(p,clock);}
 function settle(){for(let i=0;i<100;i++){clock+=17;app.tick(clock);}}
 function artwork(char){let found;renderedScene.traverse(o=>{if(o.userData.artGlyph===char&&o.isGroup)found=o;});return found;}

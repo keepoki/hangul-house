@@ -2,12 +2,14 @@ import * as THREE from './assets/three.module.js';
 import { tourStops as stops, tourGlyphs, chapterAt, sampleTour } from './camera-tour.js';
 import { exhibitionSites } from './exhibition-layout.js';
 import { buildHangulBuilding } from './hangul-building.js';
+import { createEnvironment, createReflectingPool } from './environment.js';
 
 const $ = (id) => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 import { chapters } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
+let reflectingPool=null;
 let bright = false, textTimer, scrollHeight = 1;
 let zoom = 1, desiredZoom = 1;
 const lamps = [];
@@ -61,27 +63,6 @@ function updateChapter(){
 }
 
 // All architecture, lettering, materials and lighting are generated locally.
-function stoneTexture(base, amount=18) {
-  const canvas=document.createElement('canvas'); canvas.width=canvas.height=256;
-  const ctx=canvas.getContext('2d');
-  const img=ctx.createImageData(256,256);
-  let seed=42;
-  for(let i=0;i<img.data.length;i+=4) {
-    seed=(seed*1664525+1013904223)>>>0;
-    const n=((seed/4294967295)-.5)*amount;
-    img.data[i]=base[0]+n;img.data[i+1]=base[1]+n;img.data[i+2]=base[2]+n;img.data[i+3]=255;
-  }
-  ctx.putImageData(img,0,0);
-  const tex=new THREE.CanvasTexture(canvas);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(3,3);tex.colorSpace=THREE.SRGBColorSpace;
-  return tex;
-}
-function woodTexture() {
-  const c=document.createElement('canvas'); c.width=128;c.height=512;
-  const ctx=c.getContext('2d');ctx.fillStyle='#b28a5a';ctx.fillRect(0,0,128,512);
-  let seed=13;
-  for(let i=0;i<600;i++) { seed=(seed*16807)%2147483647;const x=seed%128;ctx.strokeStyle=`rgba(${seed%2?125:12},${seed%2?89:9},${seed%2?52:5},.18)`;ctx.lineWidth=.3+(seed%10)/10;ctx.beginPath();ctx.moveTo(x,0);ctx.bezierCurveTo(x+4,160,x-3,350,x+1,512);ctx.stroke(); }
-  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(4,1);t.colorSpace=THREE.SRGBColorSpace;return t;
-}
 function material(color, roughness=.7, metalness=0, map=null) { return new THREE.MeshStandardMaterial({color,roughness,metalness,map}); }
 function mesh(geometry,mat,x=0,y=0,z=0,parent=house) {
   const m=new THREE.Mesh(geometry,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
@@ -135,13 +116,11 @@ function setup() {
   renderer.domElement.addEventListener('webglcontextrestored',()=>{ /* Recovery is user-initiated, preserving workshop state. */ });
   house=new THREE.Group();scene.add(house);
   scene.fog.density=.009;
-  const limestone=material('#ede1c9',.76,.02,stoneTexture([231,224,207],22));
-  const dark=material('#3c3e3b',.74,.1,stoneTexture([133,134,127],25));
-  const floor=material('#aaa396',.66,.06,stoneTexture([172,168,155],15));
-  const timber=material('#e1b780',.63,.02,woodTexture());
+  const environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761});
+  const {limestone,dark,floor,timber,hall,gravel,soil}=environmentDetail.materials;
   const blackMetal=material('#343632',.4,.45);
   const bronze=material('#c59c5e',.3,.68);
-  const ivory=material('#e9e0ce',.52,.02,stoneTexture([238,230,211],12));
+  const ivory=limestone.clone();ivory.color.set('#eee5d1');
   const gold=material('#d6ad65',.27,.63);
   const green=material('#6f8c7c',.48,.28);
   const ceramic=material('#e4e1d2',.32,.05);
@@ -165,7 +144,6 @@ function setup() {
   }
   buildHangulBuilding(THREE,house,{limestone,timber,charcoal:dark,glass,strip});
   // A high exhibition hall frames the route without enclosing the artworks in the house.
-  const hall=material('#797a72',.87,0,stoneTexture([159,157,146],22));
   box(68,11,.35,hall,0,5.4,-34);box(.35,11,68,hall,-34,5.4,0);box(.35,11,68,hall,34,5.4,0);
   for(let x=-30;x<=30;x+=6){
     box(.16,13.6,.18,blackMetal,x,6.7,-33.6);
@@ -176,9 +154,6 @@ function setup() {
     for(const x of [-33.6,33.6])box(.2,13.8,.2,blackMetal,x,6.8,z);
   }
   const ceiling=mesh(new THREE.PlaneGeometry(67,67),glass,0,13.8,0);ceiling.rotation.x=Math.PI/2;ceiling.castShadow=false;
-  const leaf=material('#6f7c54',.92),leafDark=material('#485c43',.95);
-  const water=new THREE.MeshPhysicalMaterial({color:'#243e38',metalness:.68,roughness:.1,clearcoat:1,clearcoatRoughness:.08,envMapIntensity:.8});
-  const gravel=material('#a8a193',.96,0,stoneTexture([178,172,157],75));
   const displayMaterials={'ㄱ':ivory,'ㅇ':bronze,'ㅁ':timber,'ㅎ':gold,'ㅏ':green,'ㅅ':ceramic};
   for(const site of exhibitionSites) {
     const groupStart=house.children.length,sceneStart=scene.children.length;
@@ -186,49 +161,47 @@ function setup() {
     box(11.5,.2,10.2,site.theme==='quiet'?gravel:limestone,0,.04,0,zone);
     if(site.theme==='stone'){
       box(11,7,.4,hall,0,3.6,-3.8,zone);box(.4,7,4.7,hall,-5.4,3.6,-1.65,zone);
-      for(let y=1.5;y<7;y+=1.8)box(10.9,.014,.015,joint,0,y,-3.59,zone);
+      for(let y=1.5;y<7;y+=1.8)box(10.9,.012,.015,joint,0,y,-3.59,zone);
+      for(let x=-4.1;x<5;x+=2.75)box(.014,6.85,.014,joint,x,3.6,-3.585,zone);
+      box(10.8,.035,.055,strip,0,.22,-3.53,zone);
       box(4,.35,.85,limestone,3.1,.4,3.2,zone);
     }
     if(site.theme==='water'){
-      box(11.1,.12,9.8,water,0,.2,0,zone);
+      box(11.1,.14,9.8,dark,0,.17,0,zone);
+      reflectingPool=createReflectingPool(THREE,zone,scene,renderer,11.1,9.8,innerWidth<761);
       for(const x of [-5.7,5.7])box(.35,.32,10.4,dark,x,.16,0,zone);
       for(const z of [-5.05,5.05])box(11.7,.32,.35,dark,0,.16,z,zone);
       for(const x of [-5.4,5.4])box(.025,.02,9.8,strip,x,.29,0,zone);
-      for(const x of [-4,4])mesh(new THREE.IcosahedronGeometry(.75,1),dark,x,.5,-3.5,zone).scale.set(1.4,.65,1);
+      environmentDetail.rock(zone,-4,-3.45,.8,101,.27);environmentDetail.rock(zone,4.1,-3.6,.65,102,.27);
+      environmentDetail.rock(zone,-4.2,-2.5,.32,103,.27);environmentDetail.rock(zone,3.35,-3.7,.26,104,.27);
+      for(let z=2.05;z<5;z+=1.05)box(2.8,.10,.81,limestone,0,.32,z,zone);
       const l=new THREE.PointLight('#b5d6ce',95,14,2);l.position.set(site.x,2,site.z+4);scene.add(l);
     }
     if(site.theme==='wood'){
-      for(let x=-5.5;x<=5.5;x+=.38)box(.35,.14,10,timber,x,.2,0,zone);
-      for(const x of [-4.9,4.9])for(const z of [-4.2,3.7])box(.2,5.6,.2,timber,x,3,z,zone);
-      for(const z of [-4.2,3.7])box(10.2,.24,.24,timber,0,5.7,z,zone);
-      for(const x of [-4.9,4.9])box(.24,.24,8.2,timber,x,5.7,-.25,zone);
-      for(let x=-4.8;x<=4.8;x+=.45)box(.08,4.6,.1,timber,x,2.65,-4.2,zone);
-      box(3.6,.22,.85,timber,-2.4,.7,3.8,zone);
+      environmentDetail.timberDeck(zone,timber);
+      for(const x of [-4.72,4.72])box(.03,.025,8.4,strip,x,.235,-.15,zone);
     }
     if(site.theme==='light'){
       box(12,7,.42,dark,0,3.6,-3.9,zone);box(.4,7,5,dark,-5.8,3.6,-1.55,zone);
-      for(let x=-5;x<=5;x+=1.25)box(.035,5.9,.025,strip,x,3.6,-3.67,zone);
+      for(let x=-5;x<=5;x+=1.25){box(.11,6.1,.06,limestone,x,3.6,-3.65,zone);box(.028,5.9,.027,strip,x,3.6,-3.607,zone);}
       box(10,.04,.06,strip,0,.25,-3.5,zone);
     }
     if(site.theme==='garden'){
       for(const x of [-4.3,4.3]){
-        box(2.1,.6,8,dark,x,.4,-.5,zone);
-        box(1.95,.025,7.8,leafDark,x,.715,-.5,zone);
-        for(let n=0;n<5;n++){
-          const z=-3.3+n*1.3;
-          for(let j=0;j<3;j++){
-            const stem=mesh(new THREE.ConeGeometry(.19,.85+j*.14,5),j%2?leaf:leafDark,x+(j-1)*.4,1.05,z,zone);stem.rotation.z=(j-1)*.18;
-          }
-        }
-        beam([x,.7,-2.1],[x+.2,3.7,-2.1],.07,timber,zone);
-        for(let j=0;j<4;j++){const canopy=mesh(new THREE.IcosahedronGeometry(.9,1),j%2?leaf:leafDark,x+Math.cos(j*2)*.6,3.45+j*.33,-2.1+Math.sin(j*2)*.45,zone);canopy.scale.set(1.1,.7,1);}
+        const planter=new THREE.Group();planter.position.set(0,.48,0);zone.add(planter);
+        box(2.1,.5,8,dark,x,.34,-.5,zone);box(1.96,.035,7.82,soil,x,.63,-.5,zone);
+        environmentDetail.tree(planter,x,-2.35,x<0?91:125,x<0?1.12:.92);
+        environmentDetail.grasses(planter,x,-.15,1.8,7.1,x<0?61:81);
+        environmentDetail.rock(planter,x,.8,.48,x<0?92:126,.15);
+        environmentDetail.rock(planter,x,2.5,.27,x<0?93:127,.15);
       }
       for(let z=1.7;z<5;z+=1.3)box(3.5,.08,1.1,limestone,0,.22,z,zone);
     }
     if(site.theme==='quiet'){
       for(const [x,z,r] of [[-4,-2,.75],[4,-3,.65],[-4,2,.4],[3.8,2.4,.5]]){
-        const rock=mesh(new THREE.IcosahedronGeometry(r,1),dark,x,.25,z,zone);rock.scale.set(1.4,.6,1);
+        environmentDetail.rock(zone,x,z,r,Math.round((x+5)*20+z*7),.19);
       }
+      environmentDetail.pebbles(zone,57);
       box(3.7,.25,1.05,limestone,3,.55,-3,zone);
       for(let z=2;z<5;z+=1.4)box(3.6,.09,1.15,limestone,-.2,.2,z,zone);
     }
@@ -251,7 +224,7 @@ function setup() {
       if(!object.isMesh)return;
       const original=object.material;
       if(!materialCache.has(original)){
-        const copy=original.clone();
+        const copy=original.isShaderMaterial?original:original.clone();
         fading.push({material:copy,opacity:original.opacity,transparent:original.transparent,depthWrite:original.depthWrite});
         materialCache.set(original,copy);
       }
@@ -260,10 +233,10 @@ function setup() {
     exhibitionGroups.push({objects,fading,visible:true,lighting:scene.children.slice(sceneStart).filter(object=>object.isLight)});
 
   }
-  scene.add(new THREE.HemisphereLight('#d4d9da','#534531',.8));
-  scene.add(new THREE.AmbientLight('#c5beb2',.2));
-  const key=new THREE.DirectionalLight('#f0ddbc',1.6);key.position.set(-15,25,20);scene.add(key);
-  const rim=new THREE.DirectionalLight('#adc3cf',.85);rim.position.set(20,16,-20);scene.add(rim);
+  scene.add(new THREE.HemisphereLight('#d4d9da','#534531',.43));
+  scene.add(new THREE.AmbientLight('#c5beb2',.1));
+  const key=new THREE.DirectionalLight('#f0ddbc',1.25);key.position.set(-13,24,15);key.castShadow=true;key.shadow.mapSize.set(innerWidth<761?768:1536,innerWidth<761?768:1536);Object.assign(key.shadow.camera,{left:-15,right:15,top:15,bottom:-15,near:.3,far:65});key.shadow.bias=-.0003;key.shadow.normalBias=.06;scene.add(key);
+  const rim=new THREE.DirectionalLight('#adc3cf',.7);rim.position.set(20,16,-20);scene.add(rim);
   const p=new Float32Array(80*3);let seed=123;
   for(let i=0;i<p.length;i++){seed=(seed*16807)%2147483647;p[i]=((seed%1000)/1000-.5)*(i%3===1?15:55);if(i%3===1)p[i]+=8;}
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(p,3));
@@ -301,6 +274,7 @@ function requestDraw(){if(!frame&&!document.hidden&&document.documentElement.dat
 function draw(time,force=false) {
   frame=0;
   if(!force&&(document.documentElement.dataset.view!=='3d'||document.hidden))return;
+  if(!force&&chapter===2&&reflectingPool?.capable&&!motion.matches&&Math.abs(progress-desired)<.00001&&Math.abs(zoom-desiredZoom)<.00001&&time-lastTime<35){requestDraw();return;}
   const dt=Math.min(.05,(time-lastTime)/1000||.016);lastTime=time;
   progress=motion.matches?desired:THREE.MathUtils.damp(progress,desired,7,dt);
   zoom=motion.matches?desiredZoom:THREE.MathUtils.damp(zoom,desiredZoom,9,dt);
@@ -325,12 +299,13 @@ function draw(time,force=false) {
     $('experience').classList.toggle('is-detail',pose.focus>.35);
     $('view-label').textContent=pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관';
     if(dust) dust.rotation.y=progress*.12;
+    if(reflectingPool)reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter>=1&&pose.chapter<=3);
     renderer.render(scene,camera);
   }
   $('tour-progress').textContent=Math.round(progress*100)+'%';
   $('zoom-value').textContent=Math.round(zoom*100)+'%';
   updateChapter();
-  if(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001)requestDraw();
+  if(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001||(!motion.matches&&reflectingPool?.capable&&chapter===2))requestDraw();
 }
 export function initGallery(){
   setup();
