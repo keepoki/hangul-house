@@ -6,7 +6,7 @@ export function initInterface(){
   let controller=null,textMode=false,savedScroll=0,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
   function showText(target='text-tour'){
     if(root.dataset.view==='3d')savedScroll=scrollY;
-    textMode=true;root.dataset.view='static';controller?.pause?.();help.open=false;$('resume-gallery').hidden=false;
+    textMode=true;root.dataset.view='static';$('experience').inert=false;controller?.pause?.();help.open=false;$('resume-gallery').hidden=false;
     requestAnimationFrame(()=>{const section=$(target);section?.scrollIntoView({behavior:'instant',block:'start'});if(section){section.tabIndex=-1;section.focus({preventScroll:true});}});
   }
   function go(index){
@@ -56,8 +56,8 @@ export function initInterface(){
     const button=e.currentTarget;button.disabled=true;button.textContent='라이선스를 불러오는 중';
     try{const files=[['Three.js','THREE-LICENSE.txt'],['Cannon-es','CANNON-LICENSE.txt'],['고운바탕','FONT-LICENSE.txt']];const texts=await Promise.all(files.map(async([name,file])=>{const response=await fetch('./assets/'+file);if(!response.ok)throw new Error();return name+'\n\n'+await response.text();}));const pre=document.createElement('pre');pre.textContent=texts.join('\n\n────────────────\n\n');$('license-notices').replaceChildren(pre);}catch{button.disabled=false;button.textContent='라이선스 다시 불러오기';}
   });
-  const timeout=setTimeout(()=>{if(root.dataset.state==='loading'){$('load-status').textContent='3D 준비가 늦어지고 있습니다. 아래 설명부터 읽어보세요.';$('failure-actions').hidden=false;}},12000);
-  function fail(error){clearTimeout(timeout);controller=null;root.dataset.view='static';root.dataset.state='error';$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
+  const timeout=setTimeout(()=>{if(root.dataset.state==='loading'){$('load-status').textContent='3D 준비가 늦어지고 있습니다. 아래 설명부터 읽어보세요.';$('loading-phase').textContent='준비가 길어지고 있습니다. 글로 먼저 관람할 수 있습니다.';$('failure-actions').hidden=false;}},12000);
+  function fail(error){clearTimeout(timeout);controller=null;root.dataset.view='static';root.dataset.state='error';$('experience').inert=false;$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
   addEventListener('museum:failure',e=>fail(e.detail));
-  return {wantsText:()=>textMode,fail,attach(value){clearTimeout(timeout);controller=value;root.dataset.state='ready';$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);if(textMode)root.dataset.view='static';else root.dataset.view='3d';if(textMode||dialog.open)controller.pause?.();controller.refresh();}};
+  return {wantsText:()=>textMode,fail,attach(value){clearTimeout(timeout);controller=value;root.dataset.state='ready';$('experience').inert=false;$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);if(textMode)root.dataset.view='static';else root.dataset.view='3d';if(textMode||dialog.open)controller.pause?.();controller.refresh();}};
 }

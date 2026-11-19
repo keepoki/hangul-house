@@ -28,8 +28,8 @@ class Renderer {
 }
 const THREE={...Three,WebGLRenderer:Renderer},errors=[];
 const media={matches:false,addEventListener(){}};
-const boot=new Function('THREE','sampleTour','fitTourPose','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','batchStaticBoxes','detailCount','pickVisibleArtwork','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nconst controls=initGallery();return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};');
-const app=boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,3500,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
+const boot=new Function('THREE','sampleTour','fitTourPose','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','batchStaticBoxes','detailCount','pickVisibleArtwork','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console','initOptions',source+'\nreturn (async()=>{const controls=await initGallery(initOptions);return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};})()');
+const app=await boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,3500,v=>lastScroll=v,(type,fn)=>handlers.set('window:'+type,fn),()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
 function sample(p){clock+=17;return app.sample(p,clock);}
 function settle(){for(let i=0;i<100;i++){clock+=17;app.tick(clock);}}
 function artwork(char){let found;renderedScene.traverse(o=>{if(o.userData.artGlyph===char&&o.isGroup)found=o;});return found;}
@@ -42,8 +42,14 @@ sample(0);
 
 test('the first render ignores a restored mid-tour offset and has only opening assets',()=>{
   assert.ok(initialFrame.position.distanceTo(renderedCamera.position)<.001);
-  assert.equal(initialFrame.visibleSpots,0);assert.equal(initialFrame.maxMapSize,32);
-  sample(stops[1]);assert.ok(renderedScene.children.filter(o=>o.isSpotLight&&o.visible).length===6);
+  assert.equal(initialFrame.visibleSpots,2);assert.equal(initialFrame.maxMapSize,32);
+  assert.ok(renderedScene.children.filter(o=>o.isSpotLight).every(o=>o.intensity===0));
+  app.controls.refresh();settle();assert.equal(element('tour-progress').textContent,'0%');assert.equal(lastScroll.top,0);
+  // A stale position is ignored through repeated scroll/resize events until genuine input.
+  handlers.get('window:scroll')();settle();assert.equal(element('tour-progress').textContent,'0%');
+  handlers.get('window:wheel')({type:'wheel',isTrusted:false});handlers.get('window:scroll')();settle();assert.equal(element('tour-progress').textContent,'0%');
+  handlers.get('window:wheel')({type:'wheel',isTrusted:true});handlers.get('window:scroll')();settle();assert.equal(element('tour-progress').textContent,'65%');
+  sample(stops[1]);assert.equal(renderedScene.children.filter(o=>o.isSpotLight&&o.visible).length,2);
 });
 
 test('all six independent installations have a complete, centered close-up',()=>{
@@ -109,7 +115,7 @@ test('hidden sculpture clicks are ignored and paused rendering performs no work'
 test('environment detail is concentrated near the selected gallery',t=>{
   const counts=()=>{let meshes=0,triangles=0,instances=0;renderedScene.traverseVisible(o=>{if(!o.isMesh)return;meshes++;const n=o.isInstancedMesh?o.count:1;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*n;if(o.userData.fullDetailCount)instances+=n;});return{meshes,triangles,instances};};
   sample(stops[2]);const water=counts();t.diagnostic('Water gallery scene: '+JSON.stringify(water));
-  assert.ok(water.meshes<300);assert.ok(water.triangles<200000);
+  assert.ok(water.meshes<200);assert.ok(water.triangles<50000);
   const leaves=[];renderedScene.traverse(o=>{if(o.userData.environmentDetail==='leaves')leaves.push(o);});
   const distant=leaves.reduce((n,o)=>n+o.count,0);
   sample(stops[5]);const garden=leaves.reduce((n,o)=>n+o.count,0);
@@ -170,5 +176,23 @@ test('walls and scenery do not block the close-up camera',()=>{
 });
 test('the opening frame keeps foreground installations out of the architectural view',()=>{
   sample(0);for(const char of tourGlyphs)assert.equal(artwork(char).visible,false);
-  sample(stops[1]);for(const char of tourGlyphs)assert.equal(artwork(char).visible,true);
+  sample(stops[1]);assert.equal(artwork(tourGlyphs[0]).visible,true);assert.ok(tourGlyphs.some(char=>!artwork(char).visible));
+});
+test('only the pavilion shadow map remains, and no PBR or cube environment is initialized',()=>{
+  sample(stops[2]);let shadows=0,heavyMaterials=0,lights=0;renderedScene.traverse(o=>{if(o.isLight){lights++;if(o.castShadow)shadows++;}if(o.isMesh&&(o.material.isMeshStandardMaterial||o.material.isMeshPhysicalMaterial))heavyMaterials++;});
+  assert.equal(shadows,1);assert.equal(lights,7);assert.equal(heavyMaterials,0);assert.equal(renderedScene.environment,null);
+});
+test('the loader compiles shader families in paced batches before its first render',async()=>{
+  const events=[],steps=[];let active=true;
+  class ShaderRenderer extends Renderer{
+    constructor(){super();this.isWebGLRenderer=true;this.extensions={has:name=>name==='KHR_parallel_shader_compile'};}
+    async compileAsync(object,camera,scene){assert.ok(object.isMesh||object.isPoints);assert.ok(scene.isScene);events.push('compile');}
+    render(s,c){events.push('render');super.render(s,c);}
+  }
+  document.documentElement.dataset.view='loading';document.documentElement.dataset.state='loading';
+  try{
+    const run=await boot({...Three,WebGLRenderer:ShaderRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,0,()=>{},()=>{},callback=>{setTimeout(()=>{if(active){events.push('yield');callback(performance.now());}},0);return 1;},class{observe(){}},{now:()=>0},{reload(){}},console,{onProgress:(n,phase)=>steps.push([n,phase])});
+    assert.ok(run.controls);assert.equal(events.at(-1),'render');assert.equal(events.filter(e=>e==='render').length,1);
+    assert.ok(events.filter(e=>e==='compile').length>=5);assert.ok(events.filter(e=>e==='yield').length>=3);assert.deepEqual(steps[0],[22,'scene']);assert.deepEqual(steps.at(-1),[100,'ready']);assert.ok(steps.some(([n,phase])=>phase==='frame'&&n===90));
+  }finally{active=false;document.documentElement.dataset.view='3d';document.documentElement.dataset.state='ready';}
 });

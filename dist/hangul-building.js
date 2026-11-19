@@ -24,7 +24,7 @@ export function buildHangulBuilding(THREE, parent, materials) {
   const ieung=letter('ㅇ');
   const circle=new THREE.Shape();circle.absarc(0,0,1.98,0,Math.PI*2,false);
   const opening=new THREE.Path();opening.absarc(0,0,1.25,0,Math.PI*2,true);circle.holes.push(opening);
-  const ring=new THREE.ExtrudeGeometry(circle,{depth:.88,bevelEnabled:true,bevelSize:.045,bevelThickness:.04,bevelSegments:3,curveSegments:64,steps:1});ring.translate(0,0,-.44);
+  const ring=new THREE.ExtrudeGeometry(circle,{depth:.88,bevelEnabled:true,bevelSize:.045,bevelThickness:.04,bevelSegments:2,curveSegments:32,steps:1});ring.translate(0,0,-.44);
   part(ring,limestone,5.85,2.52,3.65,ieung);
   const siot=letter('ㅅ');
   profile([[-3.9,4.55],[.5,7.55],[4.9,4.55],[4.35,4.0],[.5,6.6],[-3.35,4.0]],7.65,limestone,.18,siot);
@@ -47,8 +47,6 @@ export function buildHangulBuilding(THREE, parent, materials) {
   block(.025,3.15,6.8,glass,7.42,2.2,0);
   for(const z of [-3.35,3.42])block(5.1,.025,.025,strip,.3,4.03,z);
   block(13.8,.025,.035,strip,-.1,.55,4.6);
-  for(const [x,z] of [[-5,.4],[.2,0],[5.5,.3]]){
-    const l=new THREE.PointLight('#ffd4a2',70,12,2);l.position.set(x,3.35,z);building.add(l);
-  }
+  const warm=new THREE.PointLight('#ffd4a2',100,16,2);warm.position.set(.2,3.35,.2);building.add(warm);
   return building;
 }

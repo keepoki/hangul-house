@@ -10,13 +10,16 @@ const motion = matchMedia('(prefers-reduced-motion: reduce)');
 import { chapters } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
+let stageWidth=0,stageHeight=0;
 let reflectingPool=null;
 let environmentDetail;
 let heroBounds,paused=false,renderFailed=false;
+let scrollEnabled=false;
 const artworkBounds=[],detailMeshes=[],blockers=[];
 let bright = false, textTimer, scrollHeight = 1;
 let zoom = 1, desiredZoom = 1;
 const lamps = [];
+const spotlights=[];
 const sculptures = [];
 const exhibitionGroups=[];
 const stage = $('stage');
@@ -26,14 +29,24 @@ const setText=(id,value)=>{const el=$(id);if(el.textContent!==value)el.textConte
 function updateScroll() {
   if(document.documentElement.dataset.view!=='3d')return;
   scrollHeight = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  if(!scrollEnabled){desired=0;if(Math.abs(scrollY)>1)scrollTo({top:0,left:0,behavior:'instant'});return;}
   desired = clamp(scrollY / scrollHeight, 0, 1);
   if(paused||renderFailed)return;
   if (motion.matches) { progress = desired; draw(performance.now()); }
   else requestDraw();
 }
 function goTo(p) {
+  scrollEnabled=true;
   setZoom(1);
   scrollTo({ top: p * Math.max(1, document.documentElement.scrollHeight - innerHeight), behavior: motion.matches ? 'instant' : 'smooth' });
+}
+// A stale restoration, resize or programmatic scroll cannot move the first shot.
+function permitUserScroll(e){
+  if(scrollEnabled||document.documentElement.dataset.view!=='3d'||document.documentElement.dataset.state==='loading'||e?.isTrusted===false)return;
+  if(e?.type==='keydown'&&(!['ArrowDown','ArrowUp','PageDown','PageUp','Home','End',' '].includes(e.key)||/INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY/.test(e.target?.tagName)||e.target?.isContentEditable))return;
+  if(e?.type==='pointerdown'&&e.clientX<(document.documentElement.clientWidth??innerWidth))return;
+  if(Math.abs(scrollY)>1)scrollTo({top:0,left:0,behavior:'instant'});
+  scrollEnabled=true;
 }
 function setZoom(value) {
   desiredZoom = clamp(value,.75,1.8);
@@ -70,7 +83,7 @@ function updateChapter(){
 }
 
 // All architecture, lettering, materials and lighting are generated locally.
-function material(color, roughness=.7, metalness=0, map=null) { return new THREE.MeshStandardMaterial({color,roughness,metalness,map}); }
+function material(color, roughness=.7, metalness=0, map=null) {return new THREE.MeshPhongMaterial({color,map,shininess:Math.max(5,(1-roughness)*48),specular:metalness>.2?color:'#252525'});}
 function mesh(geometry,mat,x=0,y=0,z=0,parent=house) {
   const m=new THREE.Mesh(geometry,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
 }
@@ -82,16 +95,16 @@ function beam(a,b,r,mat,parent=house) {
 }
 function bar(x1,y1,x2,y2,width,depth,mat,parent) {
   const length=Math.hypot(x2-x1,y2-y1);
-  const m=mesh(new THREE.CapsuleGeometry(width/2,Math.max(0,length-width),7,18),mat,(x1+x2)/2,(y1+y2)/2,0,parent);
+  const m=mesh(new THREE.CapsuleGeometry(width/2,Math.max(0,length-width),4,12),mat,(x1+x2)/2,(y1+y2)/2,0,parent);
   m.rotation.z=-Math.atan2(x2-x1,y2-y1);m.scale.z=depth/width;return m;
 }
-function ring(radius,tube,mat,parent,x=0,y=0,z=0) {return mesh(new THREE.TorusGeometry(radius,tube,20,72),mat,x,y,z,parent);}
+function ring(radius,tube,mat,parent,x=0,y=0,z=0) {return mesh(new THREE.TorusGeometry(radius,tube,12,40),mat,x,y,z,parent);}
 function squareRing(mat,parent) {
   const s=new THREE.Shape(), w=.92,h=1.04,r=.18;
   s.moveTo(-w+r,-h);s.lineTo(w-r,-h);s.quadraticCurveTo(w,-h,w,-h+r);s.lineTo(w,h-r);s.quadraticCurveTo(w,h,w-r,h);s.lineTo(-w+r,h);s.quadraticCurveTo(-w,h,-w,h-r);s.lineTo(-w,-h+r);s.quadraticCurveTo(-w,-h,-w+r,-h);
   const hole=new THREE.Path(),a=.54,b=.66,k=.12;
   hole.moveTo(-a+k,-b);hole.lineTo(-a,-b+k);hole.lineTo(-a,b-k);hole.quadraticCurveTo(-a,b,-a+k,b);hole.lineTo(a-k,b);hole.quadraticCurveTo(a,b,a,b-k);hole.lineTo(a,-b+k);hole.quadraticCurveTo(a,-b,a-k,-b);hole.lineTo(-a+k,-b);s.holes.push(hole);
-  const g=new THREE.ExtrudeGeometry(s,{depth:.39,bevelEnabled:true,bevelThickness:.08,bevelSize:.07,bevelSegments:4,steps:1,curveSegments:14});g.translate(0,0,-.195);
+  const g=new THREE.ExtrudeGeometry(s,{depth:.39,bevelEnabled:true,bevelThickness:.08,bevelSize:.07,bevelSegments:2,steps:1,curveSegments:8});g.translate(0,0,-.195);
   return mesh(g,mat,0,1.17,0,parent);
 }
 function glyph(type,mat,x,z,scale=1,rotation=0,base=1.08) {
@@ -111,11 +124,23 @@ function plaque(text,x,z) {
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
   const m=mesh(new THREE.PlaneGeometry(.57,.28),new THREE.MeshBasicMaterial({map:tex}),x,.79,z);return m;
 }
+function contactMaterial(){
+  const n=32,bytes=new Uint8Array(n*n*4);for(let y=0;y<n;y++)for(let x=0;x<n;x++){const k=(y*n+x)*4,d=Math.hypot((x+.5)/n*2-1,(y+.5)/n*2-1);bytes[k+3]=Math.round(Math.max(0,1-d)**2*205);}
+  const map=new THREE.DataTexture(bytes,n,n);map.needsUpdate=true;map.magFilter=map.minFilter=THREE.LinearFilter;
+  return new THREE.MeshBasicMaterial({map,transparent:true,depthWrite:false,opacity:.65});
+}
+function lightArtwork(p,focus,reveal){
+  let a=0;while(a<lamps.length-1&&p>stops[a+2])a++;
+  const b=Math.min(lamps.length-1,a+1),t=a===b?0:THREE.MathUtils.smoothstep(p,stops[a+1],stops[b+1]);
+  const weights=[1-t,t],indices=[a,b];
+  spotlights.forEach(light=>{light.intensity=0;light.userData.artGlyph=null;});
+  indices.forEach((index,i)=>{if(weights[i]<=.001)return;const def=lamps[index],light=spotlights[index%2];light.position.copy(def.position);light.target.position.copy(def.target);light.color.set(def.color);light.userData.artGlyph=def.char;light.intensity=def.base*weights[i]*(1+.2*focus)*(bright?1.2:1)*reveal;});
+}
 function setup() {
   scene=new THREE.Scene();scene.fog=new THREE.FogExp2('#10100f',.018);
   camera=new THREE.PerspectiveCamera(35,1,.1,150);
-  renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
-  renderer.setClearColor('#10100f',0);renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<761?1.5:1.75));renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer=new THREE.WebGLRenderer({antialias:innerWidth>=761,alpha:true,powerPreference:'high-performance'});
+  renderer.setClearColor('#10100f',0);renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<761?1:1.25));renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
@@ -132,12 +157,8 @@ function setup() {
   const green=material('#6f8c7c',.48,.28);
   const ceramic=material('#e4e1d2',.32,.05);
   const strip=new THREE.MeshBasicMaterial({color:'#e5c79c',toneMapped:false});
-  const glass=new THREE.MeshPhysicalMaterial({color:'#9da99d',metalness:.12,roughness:.16,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false});
-  const environmentFaces=['#a39c8b','#5b6264','#e5ddca','#1e2422','#9a8b73','#53626a'].map(color=>{
-    const c=document.createElement('canvas');c.width=c.height=32;const ctx=c.getContext('2d');
-    ctx.fillStyle=color;ctx.fillRect(0,0,32,32);ctx.fillStyle='#ded7c5';ctx.fillRect(12,0,5,28);return c;
-  });
-  const environment=new THREE.CubeTexture(environmentFaces);environment.colorSpace=THREE.SRGBColorSpace;environment.needsUpdate=true;scene.environment=environment;scene.environmentIntensity=.35;
+  const glass=new THREE.MeshBasicMaterial({color:'#9da99d',transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false});
+  // Direct artistic lighting replaces runtime PMREM cubemap generation and PBR IBL.
   const ground=mesh(new THREE.PlaneGeometry(160,160),material('#20231f',.85),0,-.14,0,scene);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
   box(68,.18,68,floor,0,-.1,0);
   const joint=material('#635f56',.95);
@@ -163,9 +184,12 @@ function setup() {
   }
   const ceiling=mesh(new THREE.PlaneGeometry(67,67),glass,0,13.8,0);ceiling.rotation.x=Math.PI/2;ceiling.castShadow=false;
   batchStaticBoxes(THREE,house);
+  for(const object of house.children)if(object!==pavilion&&object.isMesh)object.castShadow=false;
+  pavilion.traverse(o=>{if(o.isMesh&&o.material.transparent)o.castShadow=false;});
+  const contact=contactMaterial();
   const displayMaterials={'ㄱ':ivory,'ㅇ':bronze,'ㅁ':timber,'ㅎ':gold,'ㅏ':green,'ㅅ':ceramic};
   for(const site of exhibitionSites) {
-    const groupStart=house.children.length,sceneStart=scene.children.length;
+    const groupStart=house.children.length;
     const zone=new THREE.Group();zone.position.set(site.x,0,site.z);zone.rotation.y=site.rot;zone.name=site.room;zone.userData.exhibitionTheme=site.theme;house.add(zone);
     box(11.5,.2,10.2,site.theme==='quiet'?gravel:limestone,0,.04,0,zone);
     if(site.theme==='stone'){
@@ -177,14 +201,13 @@ function setup() {
     }
     if(site.theme==='water'){
       box(11.1,.14,9.8,dark,0,.17,0,zone);
-      reflectingPool=createReflectingPool(THREE,zone,scene,renderer,11.1,9.8,innerWidth<761);
+      reflectingPool=createReflectingPool(THREE,zone,scene,renderer,11.1,9.8,innerWidth<761,innerWidth>=761);
       for(const x of [-5.7,5.7])box(.35,.32,10.4,dark,x,.16,0,zone);
       for(const z of [-5.05,5.05])box(11.7,.32,.35,dark,0,.16,z,zone);
       for(const x of [-5.4,5.4])box(.025,.02,9.8,strip,x,.29,0,zone);
       environmentDetail.rock(zone,-4,-3.45,.8,101,.27);environmentDetail.rock(zone,4.1,-3.6,.65,102,.27);
       environmentDetail.rock(zone,-4.2,-2.5,.32,103,.27);environmentDetail.rock(zone,3.35,-3.7,.26,104,.27);
       for(let z=2.05;z<5;z+=1.05)box(2.8,.10,.81,limestone,0,.32,z,zone);
-      const l=new THREE.PointLight('#b5d6ce',95,14,2);l.position.set(site.x,2,site.z+4);scene.add(l);
     }
     if(site.theme==='wood'){
       environmentDetail.timberDeck(zone,timber);
@@ -220,34 +243,28 @@ function setup() {
     glyph(site.char,displayMaterials[site.char],site.x,site.z,site.scale,site.rot,site.base);
     const front=new THREE.Vector3(Math.sin(site.rot),0,Math.cos(site.rot));
     const sign=plaque(site.char,site.x+front.x*1.62,site.z+front.z*1.62);sign.position.y=site.base-.14;sign.rotation.y=site.rot;
-    const target=new THREE.Object3D();target.position.set(site.x,site.center,site.z);scene.add(target);
-    const spot=new THREE.SpotLight(site.theme==='water'?'#e0e6d4':'#ffdfb5',620,24,.55,.7,1.8);
-    spot.position.set(site.x+front.x*2-Math.cos(site.rot)*1.2,9.5,site.z+front.z*2+Math.sin(site.rot)*1.2);spot.target=target;
-    spot.castShadow=true;spot.shadow.mapSize.set(768,768);spot.shadow.bias=-.0003;spot.shadow.normalBias=.06;spot.shadow.camera.near=.3;spot.shadow.camera.far=26;
-    spot.userData.base=620;spot.userData.artGlyph=site.char;scene.add(spot);lamps.push(spot);
-    const fixture=mesh(new THREE.CylinderGeometry(.16,.16,.48,16),blackMetal,spot.position.x,9.57,spot.position.z);
-    fixture.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),target.position.clone().sub(fixture.position).normalize());
-    box(4,.08,.1,blackMetal,spot.position.x,9.95,spot.position.z);
+    const target=new THREE.Vector3(site.x,site.center,site.z),position=new THREE.Vector3(site.x+front.x*2-Math.cos(site.rot)*1.2,9.5,site.z+front.z*2+Math.sin(site.rot)*1.2);
+    lamps.push({char:site.char,position,target,color:site.theme==='water'?'#d6e6dd':'#ffdfb5',base:310});
+    const fixture=mesh(new THREE.CylinderGeometry(.16,.16,.48,8),blackMetal,position.x,9.57,position.z);
+    fixture.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),target.clone().sub(fixture.position).normalize());
+    box(4,.08,.1,blackMetal,position.x,9.95,position.z);
+    const shade=mesh(new THREE.PlaneGeometry(4.2,2.7),contact,site.x,site.base+.008,site.z);shade.rotation.x=-Math.PI/2;shade.rotation.z=site.rot;shade.receiveShadow=false;
     batchStaticBoxes(THREE,zone);
-    const objects=house.children.slice(groupStart),materialCache=new Map(),fading=[];
+    const objects=house.children.slice(groupStart);
     objects.forEach(root=>root.traverse(object=>{
       if(!object.isMesh)return;
-      const original=object.material;
-      if(!materialCache.has(original)){
-        const copy=original.isShaderMaterial?original:original.clone();
-        fading.push({material:copy,opacity:original.opacity,transparent:original.transparent,depthWrite:original.depthWrite});
-        materialCache.set(original,copy);
-      }
-      object.material=materialCache.get(original);
+      object.castShadow=false;object.receiveShadow=false;
     }));
-    exhibitionGroups.push({objects,fading,visible:true,lighting:scene.children.slice(sceneStart).filter(object=>object.isLight),reveal:1});
+    exhibitionGroups.push({objects,site,visible:true});
 
   }
+  // The two fixed shader light slots move between exhibits; only one static shadow map exists.
+  for(let i=0;i<2;i++){const l=new THREE.SpotLight('#ffdfb5',0,24,.55,.7,1.8);l.userData.base=310;l.castShadow=false;scene.add(l,l.target);spotlights.push(l);}
   scene.add(new THREE.HemisphereLight('#d4d9da','#534531',.43));
-  scene.add(new THREE.AmbientLight('#c5beb2',.1));
-  const key=new THREE.DirectionalLight('#f0ddbc',1.25);key.position.set(-13,24,15);key.castShadow=true;key.shadow.mapSize.set(innerWidth<761?768:1536,innerWidth<761?768:1536);Object.assign(key.shadow.camera,{left:-15,right:15,top:15,bottom:-15,near:.3,far:65});key.shadow.bias=-.0003;key.shadow.normalBias=.06;scene.add(key);
-  const rim=new THREE.DirectionalLight('#adc3cf',.7);rim.position.set(20,16,-20);scene.add(rim);
-  const p=new Float32Array(80*3);let seed=123;
+  scene.add(new THREE.AmbientLight('#c5beb2',.16));
+  const key=new THREE.DirectionalLight('#f0ddbc',1.05);key.position.set(-13,24,15);key.castShadow=true;key.shadow.mapSize.set(innerWidth<761?512:768,innerWidth<761?512:768);Object.assign(key.shadow.camera,{left:-15,right:15,top:15,bottom:-15,near:.3,far:65});key.shadow.bias=-.0003;key.shadow.normalBias=.06;scene.add(key);
+  const rim=new THREE.DirectionalLight('#adc3cf',.45);rim.position.set(20,16,-20);scene.add(rim);
+  const p=new Float32Array(40*3);let seed=123;
   for(let i=0;i<p.length;i++){seed=(seed*16807)%2147483647;p[i]=((seed%1000)/1000-.5)*(i%3===1?15:55);if(i%3===1)p[i]+=8;}
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(p,3));
   dust=new THREE.Points(pg,new THREE.PointsMaterial({color:'#dbcba5',size:.025,transparent:true,opacity:.2,depthWrite:false}));scene.add(dust);
@@ -276,7 +293,7 @@ function setup() {
   renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
   // The opening shot is always the first frame, independent of the old document's scroll offset.
   progress=desired=0;cancelDraw();
-  draw(performance.now(),true);
+  draw(performance.now(),true,true);
 }
 
 function prepareBackground(){
@@ -285,41 +302,51 @@ function prepareBackground(){
   // A full-size texture is generated off the UI thread, and the original map is upgraded in place.
   const workerFactory=typeof Worker==='function'&&location.protocol!=='file:'?()=>new Worker(new URL('./surface-worker.js',document.baseURI),{type:'module'}):undefined;
   environmentDetail.hydrate({workerFactory,schedule:idle});
-  // The opening view needs no exhibition spotlights or their shadow maps. Prepare tour shaders
-  // after the first frame only on devices that support non-blocking shader compilation.
-  if(renderer.compileAsync&&renderer.extensions?.has('KHR_parallel_shader_compile'))idle(()=>{
-    if(renderFailed||paused||progress>.035)return;
-    const snapshots=exhibitionGroups.map(group=>group.lighting.map(light=>[light,light.visible]));
-    try{
-      for(const entries of snapshots)for(const [light] of entries)light.visible=true;
-      for(const group of exhibitionGroups)for(const item of group.fading)item.material.transparent=item.transparent;
-      renderer.compileAsync(scene,camera).catch(()=>{});
-    }catch{}finally{
-      for(const entries of snapshots)for(const [light,visible] of entries)light.visible=visible;
-      for(const group of exhibitionGroups)for(const item of group.fading)item.material.transparent=group.reveal<.999||item.transparent;
-    }
+}
+
+const nextPaint=()=>new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+// Compile each distinct shader family in small groups, while the dedicated loading screen can paint.
+async function compileGallery(onProgress,shouldContinue){
+  const variants=new Map();
+  scene.traverse(object=>{
+    if(!object.isMesh&&!object.isPoints)return;
+    const m=object.material;if(!m||Array.isArray(m))return;
+    const key=[m.type,m.isShaderMaterial?m.uuid:'',!!m.map,!!m.normalMap,m.side,m.transparent,m.vertexColors,object.isInstancedMesh===true,!!object.instanceColor,object.receiveShadow,object.geometry.attributes.color!==undefined].join(':');
+    if(!variants.has(key))variants.set(key,object);
   });
+  const objects=[...variants.values()],parallel=renderer.compileAsync&&renderer.extensions?.has('KHR_parallel_shader_compile');
+  for(let i=0;i<objects.length;i+=2){
+    if(renderFailed||!shouldContinue())return false;
+    onProgress(48+Math.round(i/objects.length*38),'shader');
+    await nextPaint();
+    if(parallel)await Promise.all(objects.slice(i,i+2).map(object=>renderer.compileAsync(object,camera,scene)));
+    else for(const object of objects.slice(i,i+2))renderer.compile?.(object,camera,scene);
+  }
+  return true;
 }
 
 function resize() {
   if(!renderer)return;
   const r=stage.getBoundingClientRect();
   if(r.width<=0||r.height<=0)return;
+  if(stageWidth===r.width&&stageHeight===r.height)return;
+  stageWidth=r.width;stageHeight=r.height;
   renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();requestDraw();
 }
 new ResizeObserver(resize).observe(stage);
 addEventListener('resize',updateScroll,{passive:true});
 addEventListener('scroll',updateScroll,{passive:true});
+for(const type of ['wheel','touchmove','keydown','pointerdown'])addEventListener(type,permitUserScroll,{passive:true,capture:true});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelDraw();else{lastTime=0;requestDraw();}});
 motion.addEventListener('change',()=>{progress=desired;requestDraw();});
 
 function cancelDraw(){if(frame&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(frame);frame=0;}
 function failRendering(error){if(renderFailed)return;renderFailed=true;cancelDraw();dispatchEvent(new CustomEvent('museum:failure',{detail:error}));}
 function requestDraw(){if(!frame&&!paused&&!renderFailed&&!document.hidden&&document.documentElement.dataset.view==='3d')frame=requestAnimationFrame(draw);}
-function draw(time,force=false) {
+function draw(time,force=false,prepareOnly=false) {
   frame=0;
   if(renderFailed||(!force&&(paused||document.documentElement.dataset.view!=='3d'||document.hidden)))return;
-  if(!force&&chapter===2&&reflectingPool?.capable&&!motion.matches&&Math.abs(progress-desired)<.00001&&Math.abs(zoom-desiredZoom)<.00001&&time-lastTime<35){requestDraw();return;}
+  if(!force&&chapter===2&&reflectingPool?.animated&&!motion.matches&&Math.abs(progress-desired)<.00001&&Math.abs(zoom-desiredZoom)<.00001&&time-lastTime<48){requestDraw();return;}
   const dt=Math.min(.05,(time-lastTime)/1000||.016);lastTime=time;
   progress=motion.matches?desired:THREE.MathUtils.damp(progress,desired,7,dt);
   zoom=motion.matches?desiredZoom:THREE.MathUtils.damp(zoom,desiredZoom,9,dt);
@@ -333,29 +360,38 @@ function draw(time,force=false) {
     if(pose.chapter>0&&pose.chapter<7&&pose.focus>0)pose=fitTourPose(pose,artworkBounds[pose.chapter-1],camera.aspect,zoom,pose.focus);
     camera.position.fromArray(pose.position);camera.lookAt(...pose.target);
     camera.fov=pose.fov;camera.updateProjectionMatrix();
-    const selected=chapters[pose.chapter].glyph;
     const reveal=Math.min(THREE.MathUtils.smoothstep(progress,.035,.075),1-THREE.MathUtils.smoothstep(progress,.9,.95));
-    exhibitionGroups.forEach(group=>{
-      const visible=reveal>.001;
-      if(visible!==group.visible){renderer.shadowMap.needsUpdate=true;group.visible=visible;group.objects.forEach(object=>object.visible=visible);group.lighting.forEach(light=>light.visible=visible);}
-      if(group.reveal===reveal)return;group.reveal=reveal;
-      group.fading.forEach(item=>{item.material.opacity=item.opacity*reveal;item.material.transparent=reveal<.999||item.transparent;item.material.depthWrite=reveal<.999?false:item.depthWrite;});
-      group.lighting.filter(light=>!light.isSpotLight).forEach(light=>{light.userData.restIntensity??=light.intensity;light.intensity=light.userData.restIntensity*reveal;});
+    exhibitionGroups.forEach((group,i)=>{
+      const distance=Math.hypot(camera.position.x-group.site.x,camera.position.z-group.site.z);
+      const visible=reveal>.001&&(pose.chapter===i+1||distance<(group.visible?43:39));
+      if(visible!==group.visible){group.visible=visible;group.objects.forEach(object=>object.visible=visible);}
     });
-    lamps.forEach(l=>{const accent=l.userData.artGlyph===selected?1+pose.focus*.2:1-pose.focus*.48;l.intensity=l.userData.base*accent*(bright?1.2:1)*reveal;});
+    lightArtwork(progress,pose.focus,reveal);
     if(reveal>.001)for(const item of detailMeshes){const count=detailCount(item.mesh.userData.fullDetailCount,camera.position.distanceTo(item.center),item.mesh.userData.environmentDetail);if(count!==item.mesh.count)item.mesh.count=count;}
     $('experience').classList.toggle('is-detail',pose.focus>.35);
     setText('view-label',pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관');
     if(dust) dust.rotation.y=progress*.12;
-    if(reflectingPool)reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter>=1&&pose.chapter<=3);
-    try{renderer.render(scene,camera);}catch(error){if(force)throw error;failRendering(error);return;}
+    if(!prepareOnly){
+      const settled=Math.abs(progress-desired)<.0004&&Math.abs(zoom-desiredZoom)<.0004;
+      if(reflectingPool)reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter===2&&settled);
+      try{renderer.render(scene,camera);}catch(error){if(force)throw error;failRendering(error);return;}
+    }
   }
   setText('tour-progress',Math.round(progress*100)+'%');
   updateChapter();
-  if(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001||(!motion.matches&&reflectingPool?.capable&&chapter===2))requestDraw();
+  if(!prepareOnly&&(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001||(!motion.matches&&reflectingPool?.animated&&chapter===2)))requestDraw();
 }
-export function initGallery(){
+export async function initGallery({onProgress=()=>{},shouldContinue=()=>true}={}){
+  onProgress(22,'scene');if(typeof window!=='undefined')await nextPaint();
+  if(!shouldContinue())return null;
   setup();
+  if(renderer.isWebGLRenderer){
+    onProgress(44,'shader');await nextPaint();
+    if(!await compileGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue())return null;
+    onProgress(90,'frame');await nextPaint();
+  }
+  if(renderFailed||!shouldContinue())return null;
+  draw(performance.now(),true);onProgress(100,'ready');
   // Give the browser a paint opportunity before scheduling background work.
   requestAnimationFrame(()=>setTimeout(prepareBackground,0));
   return {
