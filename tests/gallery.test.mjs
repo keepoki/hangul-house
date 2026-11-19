@@ -3,6 +3,8 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import * as Three from '../dist/assets/three.module.js';
 import { sampleTour, chapterAt, tourStops as stops, tourGlyphs } from '../dist/camera-tour.js';
+import { exhibitionSites } from '../dist/exhibition-layout.js';
+import { buildHangulBuilding } from '../dist/hangul-building.js';
 
 // Construct the actual scene with a non-GPU renderer so camera framing can be checked.
 const source=(await readFile(new URL('../dist/gallery.js',import.meta.url),'utf8')).replace(/^import[^;]+;\s*/gm,'');
@@ -23,8 +25,8 @@ class Renderer {
 }
 const THREE={...Three,WebGLRenderer:Renderer},errors=[];
 const media={matches:false,addEventListener(){}};
-const boot=new Function('THREE','sampleTour','chapterAt','stops','tourGlyphs','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nreturn {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw};');
-const app=boot(THREE,sampleTour,chapterAt,stops,tourGlyphs,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
+const boot=new Function('THREE','sampleTour','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nreturn {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw};');
+const app=boot(THREE,sampleTour,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
 function sample(p){clock+=17;return app.sample(p,clock);}
 function settle(){for(let i=0;i<100;i++){clock+=17;app.tick(clock);}}
 function artwork(char){let found;renderedScene.traverse(o=>{if(o.userData.artGlyph===char&&o.isGroup)found=o;});return found;}
@@ -33,20 +35,20 @@ function projectedBounds(object,camera=renderedCamera){
   for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z])points.push(new Three.Vector3(x,y,z).project(camera));
   return {height:Math.max(...points.map(v=>v.y))-Math.min(...points.map(v=>v.y)),points};
 }
+sample(0);
 
-test('all six works have a centered, visibly enlarged close-up',()=>{
+test('all six independent installations have a complete, centered close-up',()=>{
   assert.deepEqual(errors,[]);
   for(let i=0;i<tourGlyphs.length;i++){
-    sample(0);const object=artwork(tourGlyphs[i]);assert.ok(object);
-    const wide=projectedBounds(object);
+    const object=artwork(tourGlyphs[i]);assert.ok(object);
     sample(stops[i+1]);const close=projectedBounds(object),pose=sampleTour(stops[i+1]);
     assert.equal(pose.focus,1);
-    assert.ok(close.height>wide.height*2.5,`${tourGlyphs[i]} must grow substantially on screen`);
+    assert.ok(close.height>.9,`${tourGlyphs[i]} must occupy at least 45% of the image height`);
     assert.ok(close.points.every(v=>Math.abs(v.x)<1&&Math.abs(v.y)<1&&v.z>-1&&v.z<1),`${tourGlyphs[i]} must fit the close-up frame`);
     const center=new Three.Box3().setFromObject(object).getCenter(new Three.Vector3()).project(renderedCamera);
     assert.ok(Math.abs(center.x)<.12&&Math.abs(center.y)<.12,`${tourGlyphs[i]} must remain centered`);
     const selected=renderedScene.children.find(o=>o.isSpotLight&&o.userData.artGlyph===tourGlyphs[i]);
-    assert.ok(selected.intensity>155,'The selected work should receive the strongest accent');
+    assert.ok(selected.intensity>selected.userData.base,'The selected work should receive the strongest accent');
   }
 });
 test('mobile close-ups fit all six complete sculptures',()=>{
@@ -73,7 +75,7 @@ test('zoom buttons dolly closer, respect limits and restore the current view',()
   handlers.get('zoom-reset:click')();settle();
 });
 test('clicking a sculpture navigates to its close-up',()=>{
-  sample(0);
+  sample(.075);
   const bar=artwork('ㄱ').children[0];
   const point=new Three.Box3().setFromObject(bar).getCenter(new Three.Vector3()).project(renderedCamera);
   handlers.get('stage:click')({clientX:(point.x+1)*600,clientY:(1-point.y)*450});
@@ -93,4 +95,32 @@ test('the route returns home, is continuous in both directions and respects redu
 test('every close-up has a navigation button',async()=>{
   const html=await readFile(new URL('../dist/index.html',import.meta.url),'utf8');
   assert.equal([...html.matchAll(/data-stop="\d+"/g)].length,stops.length);
+});
+test('the reference-inspired house is built from Hangul structural forms',()=>{
+  let building;renderedScene.traverse(o=>{if(o.userData.hangulBuilding)building=o;});
+  assert.ok(building);
+  assert.deepEqual(building.children.filter(o=>o.userData.structuralGlyph).map(o=>o.userData.structuralGlyph).sort(),['ㄱ','ㄴ','ㄷ','ㅁ','ㅅ','ㅇ'].sort());
+  const circle=building.children.find(o=>o.userData.structuralGlyph==='ㅇ').children[0];
+  assert.equal(circle.geometry.parameters.shapes.holes.length,1,'The circular window must be a real opening');
+});
+test('the six works sit outside the house in separate, differently themed galleries',()=>{
+  const themes=[];let building;renderedScene.traverse(o=>{if(o.userData.exhibitionTheme)themes.push(o.userData.exhibitionTheme);if(o.userData.hangulBuilding)building=o;});
+  assert.equal(new Set(themes).size,6);
+  const houseBounds=new Three.Box3().setFromObject(building);
+  for(let i=0;i<exhibitionSites.length;i++){
+    const current=artwork(exhibitionSites[i].char);
+    assert.equal(houseBounds.intersectsBox(new Three.Box3().setFromObject(current)),false,'Installations must not be inside the house');
+    for(let j=i+1;j<exhibitionSites.length;j++)assert.ok(current.position.distanceTo(artwork(exhibitionSites[j].char).position)>15,'Installations need independent space');
+  }
+});
+test('walls and scenery do not block the close-up camera',()=>{
+  for(let i=0;i<exhibitionSites.length;i++){
+    sample(stops[i+1]);const object=artwork(exhibitionSites[i].char),part=object.children[0];
+    const local=part.geometry.type==='TorusGeometry'?new Three.Vector3(part.geometry.parameters.radius,0,0):exhibitionSites[i].char==='ㅁ'?new Three.Vector3(.74,0,0):new Three.Vector3();
+    const point=part.localToWorld(local);
+    const ray=new Three.Raycaster(renderedCamera.position,point.sub(renderedCamera.position).normalize());
+    const hit=ray.intersectObjects(renderedScene.children,true).find(h=>h.object.material.opacity>.3);
+    let selected=hit?.object;while(selected&&!selected.userData.artGlyph)selected=selected.parent;
+    assert.equal(selected?.userData.artGlyph,exhibitionSites[i].char,'The work must be visible in front of its backdrop');
+  }
 });

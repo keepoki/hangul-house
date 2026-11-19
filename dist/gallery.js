@@ -1,23 +1,25 @@
 import * as THREE from './assets/three.module.js';
 import { tourStops as stops, tourGlyphs, chapterAt, sampleTour } from './camera-tour.js';
+import { exhibitionSites } from './exhibition-layout.js';
+import { buildHangulBuilding } from './hangul-building.js';
 
 const $ = (id) => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const chapters = [
-  {eyebrow:'A QUIET MUSEUM OF LETTERS', title:'글자가<br>머무는 집.', body:'익숙한 글자를, 낯선 시선으로.<br>빛과 그림자 사이에서 한글을 만납니다.',note:'여섯 개의 조형, 하나의 공간.',glyph:'ㅇ',name:'여백의 형태',material:'PATINATED BRONZE'},
-  {eyebrow:'GIYEOK · THE BEGINNING', title:'시작은,<br>하나의 꺾임.', body:'선이 방향을 바꾸는 순간.<br>단단한 돌 위에 첫 소리가 놓입니다.',note:'ㄱ · 석회암 · 시작의 모양',glyph:'ㄱ',name:'시작의 모양',material:'WARM LIMESTONE'},
-  {eyebrow:'IEUNG · THE EMPTY SPACE', title:'비어 있어,<br>가득한 형태.', body:'닫힌 원 안에 열린 풍경.<br>청동의 둥근 여백으로 빛이 흐릅니다.',note:'ㅇ · 청동 · 여백의 형태',glyph:'ㅇ',name:'여백의 형태',material:'PATINATED BRONZE'},
-  {eyebrow:'MIEUM · A ROOM WITHIN', title:'마음에도,<br>방이 있다면.', body:'네 개의 선이 감싸는 작은 세계.<br>붉은 흙의 온기가 공간에 머뭅니다.',note:'ㅁ · 테라코타 · 마음의 방',glyph:'ㅁ',name:'마음의 방',material:'FIRED TERRACOTTA'},
-  {eyebrow:'HIEUT · A BREATH OF LIGHT', title:'소리가 빛이<br>되는 순간.', body:'작은 획과 둥근 숨.<br>고요한 한글의 형태가 어둠을 밝힙니다.',note:'ㅎ · 황동 · 빛의 숨',glyph:'ㅎ',name:'빛의 숨',material:'BRUSHED BRASS'},
-  {eyebrow:'A · AN OPEN DIRECTION', title:'하나의 선,<br>열린 방향.', body:'곧게 선 획에서 뻗어 나오는 여운.<br>초록빛 표면을 따라 새로운 방향이 열립니다.',note:'ㅏ · 녹청 · 열린 방향',glyph:'ㅏ',name:'열린 방향',material:'PATINATED METAL'},
-  {eyebrow:'SIOT · TWO LINES MEET', title:'서로를 향해,<br>기울어진 선.', body:'두 개의 선이 만나 하나의 형태로.<br>매끄러운 도자기 위에 부드러운 빛이 맺힙니다.',note:'ㅅ · 도자기 · 서로를 향한 선',glyph:'ㅅ',name:'서로를 향한 선',material:'IVORY CERAMIC'},
+  {eyebrow:'THE ARCHITECTURE OF HANGUL', title:'글자가<br>공간이 되다.', body:'한글로 지은 집에서 시작해,<br>여섯 개의 다른 풍경으로 걸어갑니다.',note:'한글 건축관 · 여섯 개의 전시 공간',glyph:'ㅁ',name:'한글로 지은 집',material:'STONE · OAK · CHARCOAL'},
+  {eyebrow:'돌의 방 · STONE GALLERY', title:'시작은,<br>하나의 꺾임.', body:'거친 석재 벽과 넓은 돌바닥.<br>돌의 무게를 닮은 첫 소리를 만납니다.',note:'ㄱ · 석회암 · 시작의 모양',glyph:'ㄱ',name:'시작의 모양',material:'WARM LIMESTONE'},
+  {eyebrow:'물의 뜰 · WATER COURT', title:'비어 있어,<br>가득한 형태.', body:'고요한 수면 곁에 놓인 둥근 여백.<br>청동과 물 사이로 빛이 흐릅니다.',note:'ㅇ · 청동과 수공간 · 여백의 형태',glyph:'ㅇ',name:'여백의 형태',material:'BRONZE & STILL WATER'},
+  {eyebrow:'나무의 뜰 · TIMBER COURT', title:'마음에도,<br>방이 있다면.', body:'나무 기둥 사이, 따뜻한 공기의 결.<br>네 개의 획이 또 하나의 뜰을 만듭니다.',note:'ㅁ · 참나무 · 마음의 방',glyph:'ㅁ',name:'마음의 방',material:'OILED OAK'},
+  {eyebrow:'빛의 방 · LIGHT GALLERY', title:'소리가 빛이<br>되는 순간.', body:'짙은 벽을 따라 길게 흐르는 빛.<br>황동의 작은 획과 둥근 숨을 비춥니다.',note:'ㅎ · 황동 · 빛의 숨',glyph:'ㅎ',name:'빛의 숨',material:'BRUSHED BRASS'},
+  {eyebrow:'초록의 정원 · GREEN COURT', title:'하나의 선,<br>열린 방향.', body:'낮은 식재와 초록빛 금속 사이.<br>식물의 그림자가 새로운 방향을 그립니다.',note:'ㅏ · 녹청과 정원 · 열린 방향',glyph:'ㅏ',name:'열린 방향',material:'PATINATED METAL'},
+  {eyebrow:'고요의 방 · QUIET GALLERY', title:'서로를 향해,<br>기울어진 선.', body:'자갈의 결 위에 놓인 하얀 형태.<br>비워 둔 공간에서 두 선이 만납니다.',note:'ㅅ · 도자기와 자갈 · 서로를 향한 선',glyph:'ㅅ',name:'서로를 향한 선',material:'IVORY CERAMIC'},
   {eyebrow:'BACK HOME · A NEW PERSPECTIVE', title:'한 바퀴,<br>새로운 시선.', body:'같은 글자, 달라진 풍경.<br>한글의 또 다른 얼굴을 발견하셨나요.',note:'글자의 집 · 빛과 형태의 수집',glyph:'ㅅ',name:'서로를 향한 선',material:'IVORY CERAMIC'}
 ];
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
 let bright = false, textTimer, scrollHeight = 1;
 let zoom = 1, desiredZoom = 1;
-const lamps = [], roofPanels = [], occluders = [];
+const lamps = [];
 const sculptures = [];
 const stage = $('stage');
 const clamp = THREE.MathUtils.clamp;
@@ -107,7 +109,7 @@ function stoneTexture(base, amount=18) {
 }
 function woodTexture() {
   const c=document.createElement('canvas'); c.width=128;c.height=512;
-  const ctx=c.getContext('2d');ctx.fillStyle='#403124';ctx.fillRect(0,0,128,512);
+  const ctx=c.getContext('2d');ctx.fillStyle='#b28a5a';ctx.fillRect(0,0,128,512);
   let seed=13;
   for(let i=0;i<600;i++) { seed=(seed*16807)%2147483647;const x=seed%128;ctx.strokeStyle=`rgba(${seed%2?125:12},${seed%2?89:9},${seed%2?52:5},.18)`;ctx.lineWidth=.3+(seed%10)/10;ctx.beginPath();ctx.moveTo(x,0);ctx.bezierCurveTo(x+4,160,x-3,350,x+1,512);ctx.stroke(); }
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(4,1);t.colorSpace=THREE.SRGBColorSpace;return t;
@@ -136,8 +138,8 @@ function squareRing(mat,parent) {
   const g=new THREE.ExtrudeGeometry(s,{depth:.39,bevelEnabled:true,bevelThickness:.08,bevelSize:.07,bevelSegments:4,steps:1,curveSegments:14});g.translate(0,0,-.195);
   return mesh(g,mat,0,1.17,0,parent);
 }
-function glyph(type,mat,x,z,scale=1,rotation=0) {
-  const g=new THREE.Group();house.add(g);g.position.set(x,1.08,z);g.scale.setScalar(scale);g.rotation.y=rotation;
+function glyph(type,mat,x,z,scale=1,rotation=0,base=1.08) {
+  const g=new THREE.Group();house.add(g);g.position.set(x,base,z);g.scale.setScalar(scale);g.rotation.y=rotation;
   g.userData.artGlyph=type;sculptures.push(g);
   if(type==='ㄱ') {bar(-.8,2.1,.7,2.1,.39,.48,mat,g);bar(.7,2.1,.7,.12,.39,.48,mat,g);}
   if(type==='ㅇ') ring(.95,.23,mat,g,0,1.19,0);
@@ -146,12 +148,6 @@ function glyph(type,mat,x,z,scale=1,rotation=0) {
   if(type==='ㅎ') {bar(-.4,2.55,.4,2.55,.19,.35,mat,g);bar(-.72,2.14,.72,2.14,.21,.4,mat,g);ring(.64,.18,mat,g,0,.92,0);}
   if(type==='ㅏ') {bar(-.32,.15,-.32,2.2,.34,.4,mat,g);bar(-.32,1.23,.8,1.23,.31,.4,mat,g);}
   return g;
-}
-function roofQuad(x1,y1,x2,y2,z1,z2,mat) {
-  const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',new THREE.Float32BufferAttribute([x1,y1,z1,x2,y2,z1,x2,y2,z2,x1,y1,z2],3));geo.setIndex([0,1,2,0,2,3]);geo.computeVertexNormals();
-  const uv=new Float32Array([0,0,1,0,1,1,0,1]);geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));
-  return mesh(geo,mat);
 }
 function plaque(text,x,z) {
   const c=document.createElement('canvas');c.width=128;c.height=64;
@@ -170,98 +166,126 @@ function setup() {
   renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();$('fallback').hidden=false;});
   renderer.domElement.addEventListener('webglcontextrestored',()=>location.reload());
   house=new THREE.Group();scene.add(house);
-  const stone=material('#4a4843',.85,0,stoneTexture([101,98,91],25));
-  const dark=material('#292a28',.72,.12,stoneTexture([97,97,91],19));
-  const floor=material('#535047',.49,.12,stoneTexture([114,108,95],12));
-  const timber=material('#ad8b64',.76,0,woodTexture());
-  const blackMetal=material('#302f2b',.42,.48);
-  const roofMat=material('#383832',.8,.12,stoneTexture([91,92,85],15));
-  const wallMat=material('#686259',.94,0,stoneTexture([132,123,107],32));
-  const bronze=material('#bc8c49',.28,.67);
-  const ivory=material('#e6d9bd',.5,.03,stoneTexture([235,224,200],8));
-  const red=material('#9b4931',.66,.04,stoneTexture([198,141,111],12));
-  const gold=material('#d4a85a',.3,.58);
-  const green=material('#617367',.54,.18);
-  const ceramic=material('#d3d1bd',.34,.08);
-  const ground=mesh(new THREE.PlaneGeometry(200,200),material('#181917',.82),0,-.12,0,scene);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
-  box(16,.42,8.7,dark,0,.11,0);
-  box(15.7,.16,8.4,floor,0,.4,0);
-  // Stone joints and three floating entry steps.
-  const joint=material('#373832',.9);
-  for(let x=-6;x<=6;x+=2) box(.018,.008,8.3,joint,x,.485,0);
-  for(let z=-2;z<=2;z+=2) box(15.6,.008,.016,joint,0,.486,z);
-  for(let i=0;i<3;i++) box(7.2,.12,1.04,dark,-2.9,.29-i*.12,4.2+i*.53);
-  const strip=new THREE.MeshBasicMaterial({color:'#eac08a',toneMapped:false});
-  for(let i=0;i<3;i++) box(7.05,.018,.025,strip,-2.9,.34-i*.12,4.73+i*.53);
-  for(let x of [-7.25,2.15,7.25]) for(let z of [-3.7,3.7]) box(.15,4.65,.17,blackMetal,x,2.79,z);
-  // Twin pitched roofs echo the gallery house; the near half opens to the viewer.
-  const roofs=[{left:-7.45,right:2.3,peak:-2.575,eave:4.95,ridge:7.08},{left:2.15,right:7.5,peak:4.825,eave:4.12,ridge:5.55}];
-  for(const r of roofs) {
-    for(const z of [-3.9,3.9]) {
-      beam([r.left,r.eave,z],[r.peak,r.ridge,z],.1,blackMetal);
-      beam([r.peak,r.ridge,z],[r.right,r.eave,z],.1,blackMetal);
-      beam([r.left,r.eave-.12,z],[r.peak,r.ridge-.12,z],.055,timber);
-      beam([r.peak,r.ridge-.12,z],[r.right,r.eave-.12,z],.055,timber);
+  scene.fog.density=.009;
+  const limestone=material('#ede1c9',.76,.02,stoneTexture([231,224,207],22));
+  const dark=material('#3c3e3b',.74,.1,stoneTexture([133,134,127],25));
+  const floor=material('#aaa396',.66,.06,stoneTexture([172,168,155],15));
+  const timber=material('#e1b780',.63,.02,woodTexture());
+  const blackMetal=material('#343632',.4,.45);
+  const bronze=material('#c59c5e',.3,.68);
+  const ivory=material('#e9e0ce',.52,.02,stoneTexture([238,230,211],12));
+  const gold=material('#d6ad65',.27,.63);
+  const green=material('#6f8c7c',.48,.28);
+  const ceramic=material('#e4e1d2',.32,.05);
+  const strip=new THREE.MeshBasicMaterial({color:'#e5c79c',toneMapped:false});
+  const glass=new THREE.MeshPhysicalMaterial({color:'#9da99d',metalness:.12,roughness:.16,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false});
+  const environmentFaces=['#a39c8b','#5b6264','#e5ddca','#1e2422','#9a8b73','#53626a'].map(color=>{
+    const c=document.createElement('canvas');c.width=c.height=32;const ctx=c.getContext('2d');
+    ctx.fillStyle=color;ctx.fillRect(0,0,32,32);ctx.fillStyle='#ded7c5';ctx.fillRect(12,0,5,28);return c;
+  });
+  const environment=new THREE.CubeTexture(environmentFaces);environment.colorSpace=THREE.SRGBColorSpace;environment.needsUpdate=true;scene.environment=environment;scene.environmentIntensity=.35;
+  const ground=mesh(new THREE.PlaneGeometry(160,160),material('#20231f',.85),0,-.14,0,scene);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
+  box(68,.18,68,floor,0,-.1,0);
+  const joint=material('#635f56',.95);
+  for(let n=-32;n<=32;n+=4){box(.018,.007,67,joint,n,-.006,0);box(67,.007,.018,joint,0,-.006,n);}
+  // The pavilion is one architectural exhibit in a much larger museum.
+  box(17.7,.4,10.2,limestone,0,.2,0);
+  box(17.25,.08,9.7,floor,0,.44,0);
+  for(let i=0;i<3;i++){
+    box(8,.12,1.0,limestone,.3,.32-i*.12,5.35+i*.55);
+    box(7.9,.018,.025,strip,.3,.37-i*.12,5.85+i*.55);
+  }
+  buildHangulBuilding(THREE,house,{limestone,timber,charcoal:dark,glass,strip});
+  // A high exhibition hall frames the route without enclosing the artworks in the house.
+  const hall=material('#797a72',.87,0,stoneTexture([159,157,146],22));
+  box(68,11,.35,hall,0,5.4,-34);box(.35,11,68,hall,-34,5.4,0);box(.35,11,68,hall,34,5.4,0);
+  for(let x=-30;x<=30;x+=6){
+    box(.16,13.6,.18,blackMetal,x,6.7,-33.6);
+    box(.04,5.2,.03,strip,x,6.7,-33.35);
+  }
+  for(const z of [-28,-14,0,14]){
+    box(68,.2,.2,blackMetal,0,13.7,z);
+    for(const x of [-33.6,33.6])box(.2,13.8,.2,blackMetal,x,6.8,z);
+  }
+  const ceiling=mesh(new THREE.PlaneGeometry(67,67),glass,0,13.8,0);ceiling.rotation.x=Math.PI/2;ceiling.castShadow=false;
+  const leaf=material('#6f7c54',.92),leafDark=material('#485c43',.95);
+  const water=new THREE.MeshPhysicalMaterial({color:'#243e38',metalness:.68,roughness:.1,clearcoat:1,clearcoatRoughness:.08,envMapIntensity:.8});
+  const gravel=material('#a8a193',.96,0,stoneTexture([178,172,157],75));
+  const displayMaterials={'ㄱ':ivory,'ㅇ':bronze,'ㅁ':timber,'ㅎ':gold,'ㅏ':green,'ㅅ':ceramic};
+  for(const site of exhibitionSites) {
+    const zone=new THREE.Group();zone.position.set(site.x,0,site.z);zone.rotation.y=site.rot;zone.name=site.room;zone.userData.exhibitionTheme=site.theme;house.add(zone);
+    box(11.5,.2,10.2,site.theme==='quiet'?gravel:limestone,0,.04,0,zone);
+    if(site.theme==='stone'){
+      box(11,7,.4,hall,0,3.6,-3.8,zone);box(.4,7,4.7,hall,-5.4,3.6,-1.65,zone);
+      for(let y=1.5;y<7;y+=1.8)box(10.9,.014,.015,joint,0,y,-3.59,zone);
+      box(4,.35,.85,limestone,3.1,.4,3.2,zone);
     }
-    beam([r.peak,r.ridge,-3.9],[r.peak,r.ridge,3.9],.09,blackMetal);
-    for(const [z1,z2,side] of [[-3.9,0,-1],[0,3.9,1]]) {
-      for(const [xa,ya,xb,yb] of [[r.left,r.eave,r.peak,r.ridge],[r.peak,r.ridge,r.right,r.eave]]) {
-        const m=roofMat.clone();m.side=THREE.DoubleSide;m.transparent=true;m.depthWrite=false;
-        const panel=roofQuad(xa,ya,xb,yb,z1,z2,m);panel.castShadow=false;roofPanels.push({mesh:panel,side});
+    if(site.theme==='water'){
+      box(11.1,.12,9.8,water,0,.2,0,zone);
+      for(const x of [-5.7,5.7])box(.35,.32,10.4,dark,x,.16,0,zone);
+      for(const z of [-5.05,5.05])box(11.7,.32,.35,dark,0,.16,z,zone);
+      for(const x of [-5.4,5.4])box(.025,.02,9.8,strip,x,.29,0,zone);
+      for(const x of [-4,4])mesh(new THREE.IcosahedronGeometry(.75,1),dark,x,.5,-3.5,zone).scale.set(1.4,.65,1);
+      const l=new THREE.PointLight('#b5d6ce',95,14,2);l.position.set(site.x,2,site.z+4);scene.add(l);
+    }
+    if(site.theme==='wood'){
+      for(let x=-5.5;x<=5.5;x+=.38)box(.35,.14,10,timber,x,.2,0,zone);
+      for(const x of [-4.9,4.9])for(const z of [-4.2,3.7])box(.2,5.6,.2,timber,x,3,z,zone);
+      for(const z of [-4.2,3.7])box(10.2,.24,.24,timber,0,5.7,z,zone);
+      for(const x of [-4.9,4.9])box(.24,.24,8.2,timber,x,5.7,-.25,zone);
+      for(let x=-4.8;x<=4.8;x+=.45)box(.08,4.6,.1,timber,x,2.65,-4.2,zone);
+      box(3.6,.22,.85,timber,-2.4,.7,3.8,zone);
+    }
+    if(site.theme==='light'){
+      box(12,7,.42,dark,0,3.6,-3.9,zone);box(.4,7,5,dark,-5.8,3.6,-1.55,zone);
+      for(let x=-5;x<=5;x+=1.25)box(.035,5.9,.025,strip,x,3.6,-3.67,zone);
+      box(10,.04,.06,strip,0,.25,-3.5,zone);
+    }
+    if(site.theme==='garden'){
+      for(const x of [-4.3,4.3]){
+        box(2.1,.6,8,dark,x,.4,-.5,zone);
+        box(1.95,.025,7.8,leafDark,x,.715,-.5,zone);
+        for(let n=0;n<5;n++){
+          const z=-3.3+n*1.3;
+          for(let j=0;j<3;j++){
+            const stem=mesh(new THREE.ConeGeometry(.19,.85+j*.14,5),j%2?leaf:leafDark,x+(j-1)*.4,1.05,z,zone);stem.rotation.z=(j-1)*.18;
+          }
+        }
+        beam([x,.7,-2.1],[x+.2,3.7,-2.1],.07,timber,zone);
+        for(let j=0;j<4;j++){const canopy=mesh(new THREE.IcosahedronGeometry(.9,1),j%2?leaf:leafDark,x+Math.cos(j*2)*.6,3.45+j*.33,-2.1+Math.sin(j*2)*.45,zone);canopy.scale.set(1.1,.7,1);}
       }
+      for(let z=1.7;z<5;z+=1.3)box(3.5,.08,1.1,limestone,0,.22,z,zone);
     }
-    for(const x of [r.left,r.right]) beam([x,r.eave,-3.9],[x,r.eave,3.9],.09,blackMetal);
+    if(site.theme==='quiet'){
+      for(const [x,z,r] of [[-4,-2,.75],[4,-3,.65],[-4,2,.4],[3.8,2.4,.5]]){
+        const rock=mesh(new THREE.IcosahedronGeometry(r,1),dark,x,.25,z,zone);rock.scale.set(1.4,.6,1);
+      }
+      box(3.7,.25,1.05,limestone,3,.55,-3,zone);
+      for(let z=2;z<5;z+=1.4)box(3.6,.09,1.15,limestone,-.2,.2,z,zone);
+    }
+    // Each letter occupies its own site and is scaled as a full-size installation.
+    const plinthHeight=site.base-.2;
+    box(site.char==='ㅇ'?5.5:4.8,plinthHeight,3.2,dark,site.x,.2+plinthHeight/2,site.z);
+    glyph(site.char,displayMaterials[site.char],site.x,site.z,site.scale,site.rot,site.base);
+    const front=new THREE.Vector3(Math.sin(site.rot),0,Math.cos(site.rot));
+    const sign=plaque(site.char,site.x+front.x*1.62,site.z+front.z*1.62);sign.position.y=site.base-.14;sign.rotation.y=site.rot;
+    const target=new THREE.Object3D();target.position.set(site.x,site.center,site.z);scene.add(target);
+    const spot=new THREE.SpotLight(site.theme==='water'?'#e0e6d4':'#ffdfb5',620,24,.55,.7,1.8);
+    spot.position.set(site.x+front.x*2-Math.cos(site.rot)*1.2,9.5,site.z+front.z*2+Math.sin(site.rot)*1.2);spot.target=target;
+    spot.castShadow=true;spot.shadow.mapSize.set(768,768);spot.shadow.bias=-.0003;spot.shadow.normalBias=.06;spot.shadow.camera.near=.3;spot.shadow.camera.far=26;
+    spot.userData.base=620;spot.userData.artGlyph=site.char;scene.add(spot);lamps.push(spot);
+    const fixture=mesh(new THREE.CylinderGeometry(.16,.16,.48,16),blackMetal,spot.position.x,9.57,spot.position.z);
+    fixture.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),target.position.clone().sub(fixture.position).normalize());
+    box(4,.08,.1,blackMetal,spot.position.x,9.95,spot.position.z);
   }
-  // Back walls and timber fins become translucent only when they obstruct the orbit.
-  for(const [x,w,h] of [[-5.15,4.3,4.3],[.7,2.8,4.3],[6.2,2.2,3.5]]) {
-    const m=wallMat.clone();m.transparent=true;const b=box(w,h,.2,m,x,h/2+.5,-3.7);occluders.push(b);
-  }
-  for(let x=-7.2;x<-5.6;x+=.23) box(.07,4.3,.11,timber,x,2.65,3.67);
-  for(let z=-3.5;z<=3.5;z+=.65) {box(.07,4.3,.07,blackMetal,-7.25,2.65,z);box(.07,3.5,.07,blackMetal,7.25,2.25,z);}
-  const glass=new THREE.MeshPhysicalMaterial({color:'#8d9a8e',metalness:.1,roughness:.2,transparent:true,opacity:.035,side:THREE.DoubleSide,depthWrite:false});
-  box(.02,4.25,7.2,glass,-7.25,2.65,0);box(.02,3.5,7.2,glass,7.25,2.25,0);
-  // Six Hangul sculptures, each built as genuine volumetric geometry.
-  const artworks=[
-    {char:'ㄱ',x:-5.2,z:1.65,mat:ivory,scale:1.06,rot:-.08},
-    {char:'ㅇ',x:-1.9,z:.9,mat:bronze,scale:1.13,rot:.12},
-    {char:'ㅁ',x:2,z:1.5,mat:red,scale:.95,rot:-.11},
-    {char:'ㅎ',x:5.45,z:.45,mat:gold,scale:.91,rot:-.12},
-    {char:'ㅅ',x:-4,z:-1.9,mat:ceramic,scale:.84,rot:2.9},
-    {char:'ㅏ',x:.1,z:-2,mat:green,scale:.95,rot:3.3}
-  ];
-  for(const art of artworks) {
-    box(art.char==='ㅇ'?2.7:2.25,.55,1.65,stone,art.x,.765,art.z);
-    box(art.char==='ㅇ'?2.74:2.29,.035,1.69,dark,art.x,1.06,art.z);
-    glyph(art.char,art.mat,art.x,art.z,art.scale,art.rot);
-    plaque(art.char,art.x,art.z+.83);
-    // The fixtures, targets and shadow-casting spotlights occupy the same space.
-    const ly=art.x>3?4.45:5.35;
-    const sx=art.x-.4,sz=art.z+.95;
-    const target=new THREE.Object3D();target.position.set(art.x,1.7,art.z);scene.add(target);
-    const spot=new THREE.SpotLight('#ffdbab',155,13,.48,.75,1.8);spot.position.set(sx,ly,sz);spot.target=target;
-    spot.castShadow=true;spot.shadow.mapSize.set(768,768);spot.shadow.bias=-.0003;spot.shadow.normalBias=.045;spot.shadow.camera.near=.2;spot.shadow.camera.far=15;spot.shadow.blurSamples=8;spot.userData.base=155;
-    spot.userData.artGlyph=art.char;scene.add(spot);lamps.push(spot);
-    const fixture=mesh(new THREE.CylinderGeometry(.105,.105,.34,16),blackMetal,sx,ly+.05,sz);fixture.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),target.position.clone().sub(fixture.position).normalize());
-    const bulb=mesh(new THREE.CircleGeometry(.077,20),new THREE.MeshBasicMaterial({color:'#ffe3b5'}),0,0,0,fixture);bulb.position.y=-.173;bulb.rotation.x=Math.PI/2;
-    box(1.3,.055,.07,blackMetal,sx,ly+.3,sz);
-    const pool=mesh(new THREE.CircleGeometry(1.6,48),new THREE.MeshBasicMaterial({color:'#d8a45e',transparent:true,opacity:.025,depthWrite:false}),art.x,.493,art.z+.2);pool.rotation.x=-Math.PI/2;pool.scale.y=.8;pool.castShadow=false;
-  }
-  // Benches, a slender branch and warm cove lighting make it a house, not a display case.
-  box(2.2,.12,.58,timber,3.1,.95,3.3);box(.12,.48,.48,blackMetal,2.2,.69,3.3);box(.12,.48,.48,blackMetal,4,.69,3.3);
-  box(2.2,.12,.58,timber,-1.3,.95,-3.2);box(.12,.48,.48,blackMetal,-2.2,.69,-3.2);box(.12,.48,.48,blackMetal,-.4,.69,-3.2);
-  box(8.8,.025,.025,strip,-2.8,.54,-3.55);box(4.9,.025,.025,strip,4.75,.54,-3.55);
-  mesh(new THREE.CylinderGeometry(.12,.19,.55,24),material('#baa482',.64),-6.5,.77,-2.7);
-  for(let i=0;i<6;i++) beam([-6.5,1,-2.7],[-6.5+Math.sin(i*2.1)*.37,1.6+i*.12,-2.7+Math.cos(i)*.26],.012,timber);
-  scene.add(new THREE.HemisphereLight('#d0d4d7','#413021',.68));
-  const ambient=new THREE.AmbientLight('#b8b4ab',.2);scene.add(ambient);
-  const key=new THREE.DirectionalLight('#e3d5be',1.7);key.position.set(-9,15,13);scene.add(key);
-  const rim=new THREE.DirectionalLight('#9cabc4',1.15);rim.position.set(8,10,-10);scene.add(rim);
-  const bounce=new THREE.PointLight('#d4b18b',45,35,2);bounce.position.set(0,7,10);scene.add(bounce);
-  const warm=new THREE.PointLight('#ffc27e',18,15,2);warm.position.set(-2,1.7,-3.2);scene.add(warm);
-  const p=new Float32Array(100*3);let s=123;
-  for(let i=0;i<p.length;i++){s=(s*16807)%2147483647;p[i]=((s%1000)/1000-.5)*(i%3===1?9:23);if(i%3===1)p[i]+=5;}
+  scene.add(new THREE.HemisphereLight('#d4d9da','#534531',.8));
+  scene.add(new THREE.AmbientLight('#c5beb2',.2));
+  const key=new THREE.DirectionalLight('#f0ddbc',1.6);key.position.set(-15,25,20);scene.add(key);
+  const rim=new THREE.DirectionalLight('#adc3cf',.85);rim.position.set(20,16,-20);scene.add(rim);
+  const p=new Float32Array(80*3);let seed=123;
+  for(let i=0;i<p.length;i++){seed=(seed*16807)%2147483647;p[i]=((seed%1000)/1000-.5)*(i%3===1?15:55);if(i%3===1)p[i]+=8;}
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(p,3));
-  dust=new THREE.Points(pg,new THREE.PointsMaterial({color:'#dbbc82',size:.017,transparent:true,opacity:.23,depthWrite:false}));scene.add(dust);
+  dust=new THREE.Points(pg,new THREE.PointsMaterial({color:'#dbcba5',size:.025,transparent:true,opacity:.2,depthWrite:false}));scene.add(dust);
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
   function pickArtwork(e) {
     const rect=renderer.domElement.getBoundingClientRect();
@@ -302,13 +326,10 @@ function draw(time) {
     const pose=sampleTour(progress,{mobile,reducedMotion:motion.matches,zoom});
     camera.position.fromArray(pose.position);camera.lookAt(...pose.target);
     camera.fov=pose.fov;camera.updateProjectionMatrix();
-    const nearZ=camera.position.z/Math.hypot(camera.position.x,camera.position.z);
-    roofPanels.forEach(p=>{p.mesh.material.opacity=THREE.MathUtils.lerp(.96,.065,THREE.MathUtils.smoothstep(p.side*nearZ,-.15,.25))*(1-pose.focus*.45);});
-    occluders.forEach(m=>{m.material.opacity=THREE.MathUtils.lerp(.09,1,THREE.MathUtils.smoothstep(nearZ,-.35,.15));if(nearZ<0)m.material.opacity*=1-pose.focus*.7;m.material.depthWrite=m.material.opacity>.98;});
     const selected=chapters[pose.chapter].glyph;
     lamps.forEach(l=>{const accent=l.userData.artGlyph===selected?1+pose.focus*.2:1-pose.focus*.48;l.intensity=l.userData.base*accent*(bright?1.25:1);});
     $('experience').classList.toggle('is-detail',pose.focus>.35);
-    $('view-label').textContent=pose.focus>.65?'작품 클로즈업':'공간 둘러보기';
+    $('view-label').textContent=pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관';
     if(dust) dust.rotation.y=progress*.12;
     renderer.render(scene,camera);
   }
