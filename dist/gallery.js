@@ -12,13 +12,13 @@ let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
 let stageWidth=0,stageHeight=0,stagePixelRatio=0;
 let reflectingPool=null;
+let environmentDetail;
 let heroBounds,paused=false,renderFailed=false;
 let scrollEnabled=false;
 const artworkBounds=[],detailMeshes=[],blockers=[];
 let bright = false, textTimer, scrollHeight = 1;
 let zoom = 1, desiredZoom = 1;
 const lamps = [];
-const spotlights=[];
 const sculptures = [];
 const exhibitionGroups=[];
 const stage = $('stage');
@@ -82,7 +82,7 @@ function updateChapter(){
 }
 
 // All architecture, lettering, materials and lighting are generated locally.
-function material(color, roughness=.7, metalness=0, map=null) {return new THREE.MeshPhongMaterial({color,map,shininess:Math.max(5,(1-roughness)*48),specular:metalness>.2?color:'#252525'});}
+function material(color, roughness=.7, metalness=0, map=null) {return new THREE.MeshStandardMaterial({color,roughness,metalness,map});}
 function mesh(geometry,mat,x=0,y=0,z=0,parent=house) {
   const m=new THREE.Mesh(geometry,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
 }
@@ -94,16 +94,16 @@ function beam(a,b,r,mat,parent=house) {
 }
 function bar(x1,y1,x2,y2,width,depth,mat,parent) {
   const length=Math.hypot(x2-x1,y2-y1);
-  const m=mesh(new THREE.CapsuleGeometry(width/2,Math.max(0,length-width),4,12),mat,(x1+x2)/2,(y1+y2)/2,0,parent);
+  const m=mesh(new THREE.CapsuleGeometry(width/2,Math.max(0,length-width),7,18),mat,(x1+x2)/2,(y1+y2)/2,0,parent);
   m.rotation.z=-Math.atan2(x2-x1,y2-y1);m.scale.z=depth/width;return m;
 }
-function ring(radius,tube,mat,parent,x=0,y=0,z=0) {return mesh(new THREE.TorusGeometry(radius,tube,12,40),mat,x,y,z,parent);}
+function ring(radius,tube,mat,parent,x=0,y=0,z=0) {return mesh(new THREE.TorusGeometry(radius,tube,20,72),mat,x,y,z,parent);}
 function squareRing(mat,parent) {
   const s=new THREE.Shape(), w=.92,h=1.04,r=.18;
   s.moveTo(-w+r,-h);s.lineTo(w-r,-h);s.quadraticCurveTo(w,-h,w,-h+r);s.lineTo(w,h-r);s.quadraticCurveTo(w,h,w-r,h);s.lineTo(-w+r,h);s.quadraticCurveTo(-w,h,-w,h-r);s.lineTo(-w,-h+r);s.quadraticCurveTo(-w,-h,-w+r,-h);
   const hole=new THREE.Path(),a=.54,b=.66,k=.12;
   hole.moveTo(-a+k,-b);hole.lineTo(-a,-b+k);hole.lineTo(-a,b-k);hole.quadraticCurveTo(-a,b,-a+k,b);hole.lineTo(a-k,b);hole.quadraticCurveTo(a,b,a,b-k);hole.lineTo(a,-b+k);hole.quadraticCurveTo(a,-b,a-k,-b);hole.lineTo(-a+k,-b);s.holes.push(hole);
-  const g=new THREE.ExtrudeGeometry(s,{depth:.39,bevelEnabled:true,bevelThickness:.08,bevelSize:.07,bevelSegments:2,steps:1,curveSegments:8});g.translate(0,0,-.195);
+  const g=new THREE.ExtrudeGeometry(s,{depth:.39,bevelEnabled:true,bevelThickness:.08,bevelSize:.07,bevelSegments:4,steps:1,curveSegments:14});g.translate(0,0,-.195);
   return mesh(g,mat,0,1.17,0,parent);
 }
 function glyph(type,mat,x,z,scale=1,rotation=0,base=1.08) {
@@ -131,15 +131,16 @@ function contactMaterial(){
 function lightArtwork(p,focus,reveal){
   let a=0;while(a<lamps.length-1&&p>stops[a+2])a++;
   const b=Math.min(lamps.length-1,a+1),t=a===b?0:THREE.MathUtils.smoothstep(p,stops[a+1],stops[b+1]);
-  const weights=[1-t,t],indices=[a,b];
-  spotlights.forEach(light=>{light.intensity=0;light.userData.artGlyph=null;});
-  indices.forEach((index,i)=>{if(weights[i]<=.001)return;const def=lamps[index],light=spotlights[index%2];light.position.copy(def.position);light.target.position.copy(def.target);light.color.set(def.color);light.userData.artGlyph=def.char;light.intensity=def.base*weights[i]*(1+.2*focus)*(bright?1.2:1)*reveal;});
+  const second=a===b?Math.max(0,a-1):b;
+  // The two active light slots always stay the same shader shape. The six actual static lamps
+  // retain their own pre-rendered shadow maps, and switch visibility without rebuilding them.
+  lamps.forEach((light,index)=>{light.visible=index===a||index===second;const weight=index===a?1-t:index===b?t:0;light.intensity=light.userData.base*weight*(1+.2*focus)*(bright?1.2:1)*reveal;});
 }
-function setup() {
+function setup(onProgress) {
   scene=new THREE.Scene();scene.fog=new THREE.FogExp2('#10100f',.018);
   camera=new THREE.PerspectiveCamera(35,1,.1,150);
   renderer=new THREE.WebGLRenderer({antialias:innerWidth>=761,alpha:true,powerPreference:'high-performance'});
-  renderer.setClearColor('#10100f',0);renderer.setPixelRatio(Math.min(devicePixelRatio,1));renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.setClearColor('#10100f',0);renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<761?1.25:1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
@@ -147,9 +148,9 @@ function setup() {
   renderer.domElement.addEventListener('webglcontextrestored',()=>{ /* Recovery is user-initiated, preserving workshop state. */ });
   house=new THREE.Group();scene.add(house);
   scene.fog.density=.009;
-  // Final-size compact maps are ready before the tour starts. No post-ready texture replacement,
-  // GPU upload, or fallback CPU generation competes with the first scroll gesture.
-  const environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761,compact:true});
+  // Generate the premium texture maps off the main thread, while the loader is still active.
+  // The map upgrades are awaited before any scene render, including warm-up.
+  let loadedMaps=0;environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761,premium:true,progressive:renderer.isWebGLRenderer&&typeof window!=='undefined',onSurfaceReady:()=>onProgress(34+Math.round(++loadedMaps/8*18),'materials')});
   const {limestone,dark,floor,timber,hall,gravel,soil}=environmentDetail.materials;
   const blackMetal=material('#343632',.4,.45);
   const bronze=material('#c59c5e',.3,.68);
@@ -158,8 +159,13 @@ function setup() {
   const green=material('#6f8c7c',.48,.28);
   const ceramic=material('#e4e1d2',.32,.05);
   const strip=new THREE.MeshBasicMaterial({color:'#e5c79c',toneMapped:false});
-  const glass=new THREE.MeshBasicMaterial({color:'#9da99d',transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false});
-  // Direct artistic lighting replaces runtime PMREM cubemap generation and PBR IBL.
+  const glass=new THREE.MeshPhysicalMaterial({color:'#9da99d',metalness:.12,roughness:.16,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false});
+  // Soft studio environment: locally painted light panels, warmed with the first shader family.
+  const environmentFaces=['#a39c8b','#5b6264','#e5ddca','#1e2422','#9a8b73','#53626a'].map(color=>{
+    const c=document.createElement('canvas');c.width=c.height=64;const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,64,64);
+    ctx.fillStyle='#b8ad96';ctx.fillRect(17,1,14,57);ctx.fillStyle='#ded7c5';ctx.fillRect(21,0,7,54);return c;
+  });
+  const environment=new THREE.CubeTexture(environmentFaces);environment.colorSpace=THREE.SRGBColorSpace;environment.needsUpdate=true;scene.environment=environment;scene.environmentIntensity=.35;
   const ground=mesh(new THREE.PlaneGeometry(160,160),material('#20231f',.85),0,-.14,0,scene);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
   box(68,.18,68,floor,0,-.1,0);
   const joint=material('#635f56',.95);
@@ -202,7 +208,7 @@ function setup() {
     }
     if(site.theme==='water'){
       box(11.1,.14,9.8,dark,0,.17,0,zone);
-      reflectingPool=createReflectingPool(THREE,zone,scene,renderer,11.1,9.8,innerWidth<761,false);
+      reflectingPool=createReflectingPool(THREE,zone,scene,renderer,11.1,9.8,innerWidth<761,true);
       for(const x of [-5.7,5.7])box(.35,.32,10.4,dark,x,.16,0,zone);
       for(const z of [-5.05,5.05])box(11.7,.32,.35,dark,0,.16,z,zone);
       for(const x of [-5.4,5.4])box(.025,.02,9.8,strip,x,.29,0,zone);
@@ -245,8 +251,10 @@ function setup() {
     const front=new THREE.Vector3(Math.sin(site.rot),0,Math.cos(site.rot));
     const sign=plaque(site.char,site.x+front.x*1.62,site.z+front.z*1.62);sign.position.y=site.base-.14;sign.rotation.y=site.rot;
     const target=new THREE.Vector3(site.x,site.center,site.z),position=new THREE.Vector3(site.x+front.x*2-Math.cos(site.rot)*1.2,9.5,site.z+front.z*2+Math.sin(site.rot)*1.2);
-    lamps.push({char:site.char,position,target,color:site.theme==='water'?'#d6e6dd':'#ffdfb5',base:310});
-    const fixture=mesh(new THREE.CylinderGeometry(.16,.16,.48,8),blackMetal,position.x,9.57,position.z);
+    const spot=new THREE.SpotLight(site.theme==='water'?'#e0e6d4':'#ffdfb5',0,24,.55,.7,1.8);spot.position.copy(position);spot.target.position.copy(target);spot.userData.artGlyph=site.char;spot.userData.base=620;spot.castShadow=true;spot.visible=false;
+    spot.shadow.mapSize.set(innerWidth<761?512:1024,innerWidth<761?512:1024);spot.shadow.bias=-.0003;spot.shadow.normalBias=.06;spot.shadow.camera.near=.3;spot.shadow.camera.far=26;spot.shadow.autoUpdate=false;spot.shadow.needsUpdate=false;
+    scene.add(spot,spot.target);lamps.push(spot);
+    const fixture=mesh(new THREE.CylinderGeometry(.16,.16,.48,16),blackMetal,position.x,9.57,position.z);
     fixture.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),target.clone().sub(fixture.position).normalize());
     box(4,.08,.1,blackMetal,position.x,9.95,position.z);
     const shade=mesh(new THREE.PlaneGeometry(4.2,2.7),contact,site.x,site.base+.008,site.z);shade.rotation.x=-Math.PI/2;shade.rotation.z=site.rot;shade.receiveShadow=false;
@@ -254,18 +262,18 @@ function setup() {
     const objects=house.children.slice(groupStart);
     objects.forEach(root=>root.traverse(object=>{
       if(!object.isMesh)return;
-      object.castShadow=false;object.receiveShadow=false;
+      const solid=!object.material.transparent&&!object.material.isShaderMaterial&&!object.material.isMeshBasicMaterial;
+      object.castShadow=solid&&!object.isInstancedMesh;object.receiveShadow=solid;
     }));
     exhibitionGroups.push({objects,site,visible:true});
 
   }
-  // The two fixed shader light slots move between exhibits; only one static shadow map exists.
-  for(let i=0;i<2;i++){const l=new THREE.SpotLight('#ffdfb5',0,24,.55,.7,1.8);l.userData.base=310;l.castShadow=false;scene.add(l,l.target);spotlights.push(l);}
+  // Only two of the six static lamps are visible at any point; their shadow maps are warmed once.
   scene.add(new THREE.HemisphereLight('#d4d9da','#534531',.43));
-  scene.add(new THREE.AmbientLight('#c5beb2',.16));
-  const key=new THREE.DirectionalLight('#f0ddbc',1.05);key.position.set(-13,24,15);key.castShadow=true;key.shadow.mapSize.set(innerWidth<761?512:768,innerWidth<761?512:768);Object.assign(key.shadow.camera,{left:-15,right:15,top:15,bottom:-15,near:.3,far:65});key.shadow.bias=-.0003;key.shadow.normalBias=.06;scene.add(key);
-  const rim=new THREE.DirectionalLight('#adc3cf',.45);rim.position.set(20,16,-20);scene.add(rim);
-  const p=new Float32Array(40*3);let seed=123;
+  scene.add(new THREE.AmbientLight('#c5beb2',.1));
+  const key=new THREE.DirectionalLight('#f0ddbc',1.25);key.position.set(-13,24,15);key.castShadow=true;key.shadow.autoUpdate=false;key.shadow.needsUpdate=true;key.shadow.mapSize.set(innerWidth<761?768:1536,innerWidth<761?768:1536);Object.assign(key.shadow.camera,{left:-15,right:15,top:15,bottom:-15,near:.3,far:65});key.shadow.bias=-.0003;key.shadow.normalBias=.06;scene.add(key);
+  const rim=new THREE.DirectionalLight('#adc3cf',.7);rim.position.set(20,16,-20);scene.add(rim);
+  const p=new Float32Array(80*3);let seed=123;
   for(let i=0;i<p.length;i++){seed=(seed*16807)%2147483647;p[i]=((seed%1000)/1000-.5)*(i%3===1?15:55);if(i%3===1)p[i]+=8;}
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(p,3));
   dust=new THREE.Points(pg,new THREE.PointsMaterial({color:'#dbcba5',size:.025,transparent:true,opacity:.2,depthWrite:false}));scene.add(dust);
@@ -304,13 +312,13 @@ async function compileGallery(onProgress,shouldContinue){
   scene.traverse(object=>{
     if(!object.isMesh&&!object.isPoints)return;
     const m=object.material;if(!m||Array.isArray(m))return;
-    const key=[m.type,m.isShaderMaterial?m.uuid:'',!!m.map,!!m.normalMap,m.side,m.transparent,m.vertexColors,object.isInstancedMesh===true,!!object.instanceColor,object.receiveShadow,object.geometry.attributes.color!==undefined].join(':');
+    const key=[m.type,m.isShaderMaterial?m.uuid:'',!!m.map,!!m.normalMap,!!m.roughnessMap,!!m.metalnessMap,m.side,m.transparent,m.vertexColors,object.isInstancedMesh===true,!!object.instanceColor,object.receiveShadow,object.geometry.attributes.color!==undefined].join(':');
     if(!variants.has(key))variants.set(key,object);
   });
   const objects=[...variants.values()],parallel=renderer.compileAsync&&renderer.extensions?.has('KHR_parallel_shader_compile');
   for(let i=0;i<objects.length;i+=2){
     if(renderFailed||!shouldContinue())return false;
-    onProgress(48+Math.round(i/objects.length*38),'shader');
+    onProgress(54+Math.round(i/objects.length*32),'shader');
     await nextPaint();
     if(parallel)await Promise.all(objects.slice(i,i+2).map(object=>renderer.compileAsync(object,camera,scene)));
     else for(const object of objects.slice(i,i+2))renderer.compile?.(object,camera,scene);
@@ -340,6 +348,9 @@ async function warmGallery(onProgress,shouldContinue){
       if(renderFailed||!shouldContinue())return false;
       onProgress(86+Math.floor((i-1)/(stops.length-2)*10),'warmup');await nextPaint();
       if(renderFailed||!shouldContinue())return false;
+      // Each room's own static shadow map (including the pavilion map on the first pass) is
+      // computed while its geometry is visible and reused unchanged during the entire tour.
+      lamps[i-1].shadow.needsUpdate=true;renderer.shadowMap.needsUpdate=true;
       progress=desired=stops[i];draw(performance.now(),true,false,true);
     }
     return true;
@@ -357,7 +368,7 @@ function resize() {
   if(stageWidth===r.width&&stageHeight===r.height)return;
   stageWidth=r.width;stageHeight=r.height;
   // Bound the number of shaded pixels, even on a 4K or high-DPI screen.
-  const maxPixels=innerWidth<761?480000:1000000,ratio=Math.min(devicePixelRatio,innerWidth<761?.85:1,Math.sqrt(maxPixels/(r.width*r.height)));
+  const maxPixels=innerWidth<761?1000000:2200000,ratio=Math.min(devicePixelRatio,innerWidth<761?1.25:1.5,Math.sqrt(maxPixels/(r.width*r.height)));
   if(Math.abs(stagePixelRatio-ratio)>.005){stagePixelRatio=ratio;renderer.setPixelRatio(ratio);}
   renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();requestDraw();
 }
@@ -399,7 +410,7 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
     if(dust) dust.rotation.y=progress*.12;
     if(!prepareOnly){
       const settled=Math.abs(progress-desired)<.0004&&Math.abs(zoom-desiredZoom)<.0004;
-      if(reflectingPool&&!warmOnly)reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter===2&&settled);
+      if(reflectingPool&&(!warmOnly||(pose.chapter===2&&renderer.getRenderTarget)))reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter===2&&settled);
       try{renderer.render(scene,camera);}catch(error){if(force)throw error;failRendering(error);return;}
     }
   }
@@ -409,9 +420,13 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
 export async function initGallery({onProgress=()=>{},shouldContinue=()=>true}={}){
   onProgress(22,'scene');if(typeof window!=='undefined')await nextPaint();
   if(!shouldContinue())return null;
-  setup();
+  setup(onProgress);
   if(renderer.isWebGLRenderer){
-    onProgress(44,'shader');await nextPaint();
+    onProgress(34,'materials');await nextPaint();
+    const workerFactory=typeof Worker==='function'&&typeof location!=='undefined'&&location.protocol!=='file:'?()=>new Worker(new URL('./surface-worker.js',document.baseURI),{type:'module'}):undefined;
+    await environmentDetail.hydrate({workerFactory,schedule:callback=>nextPaint().then(callback)});
+    if(renderFailed||!shouldContinue())return null;
+    onProgress(54,'shader');await nextPaint();
     if(!await compileGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue())return null;
     if(!await warmGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue())return null;
     onProgress(96,'frame');await nextPaint();

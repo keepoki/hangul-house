@@ -50,6 +50,17 @@ test('compact gallery textures are final-size and never start a background reall
   env.hydrate({workerFactory:()=>{throw new Error('No worker should start');},schedule:()=>{throw new Error('No fallback should start');}});
   assert.equal(updates,0);
 });
+test('premium maps finish their loader hydration with shared albedo, normal and roughness textures',async()=>{
+  let worker,updates=0;const env=createEnvironment(THREE,{mobile:true,premium:true,progressive:true,onSurfaceReady:()=>updates++});
+  const materials=Object.values(env.materials),original=env.materials.limestone.map,clone=env.materials.limestone.clone();
+  assert.ok(materials.every(m=>m.isMeshStandardMaterial&&m.normalMap?.isDataTexture&&m.roughnessMap?.isDataTexture));
+  const done=env.hydrate({workerFactory:()=>worker={postMessage(data){this.tasks=data.tasks;},terminate(){this.terminated=true;}}});
+  assert.ok(worker.tasks.every(t=>t.withNormal&&t.withRoughness));
+  for(const task of worker.tasks)worker.onmessage({data:{id:task.id,...createSurfacePixels(task.kind,task.base,task.seed,task.n,task.withNormal,task.withRoughness)}});
+  await done;assert.equal(updates,8);assert.equal(original.image.width,256);assert.equal(clone.map,original);assert.equal(worker.terminated,true);
+  assert.ok(materials.every(m=>m.map.image.width===256&&m.normalMap.image.width===256&&m.roughnessMap.image.width===256));
+  const tree=env.tree(new THREE.Group(),0,0,17);const leaves=tree.children.find(m=>m.userData.environmentDetail==='leaves');assert.equal(leaves.count,1550);assert.equal(leaves.geometry.index.count/3,28);
+});
 test('mobile water still ripples without a mirror target or a second scene render',()=>{
   const scene=new THREE.Scene(),group=new THREE.Group();scene.add(group);const camera=new THREE.PerspectiveCamera();
   const pool=createReflectingPool(THREE,group,scene,{isWebGLRenderer:true,render(){throw new Error('Must not render another pass');}},11,9,true,false);
