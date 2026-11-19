@@ -1,12 +1,14 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { Script } from 'node:vm';
 const base = new URL('./dist/', import.meta.url);
-const [html,css,three,gallery] = await Promise.all(['index.html','style.css','assets/three.module.js','gallery.js'].map(name=>readFile(new URL(name,base),'utf8')));
+const [html,css,three,gallery,tour] = await Promise.all(['index.html','style.css','assets/three.module.js','gallery.js','camera-tour.js'].map(name=>readFile(new URL(name,base),'utf8')));
 const exports = three.match(/export\s*\{([\s\S]*?)\}\s*;?\s*$/);
 if (!exports) throw new Error('Could not find Three.js module exports');
 const symbols = exports[1].split(',').map(s=>s.trim()).filter(Boolean).map(s=>{const p=s.split(/\s+as\s+/);return p.length===2?`${p[1]}:${p[0]}`:p[0];});
 const vendor = `const THREE=(()=>{${three.slice(0,exports.index)}\nreturn {${symbols.join(',')}};})();`;
-const app = gallery.replace(/^import[^;]+;\s*/, '');
+const app = tour.replace(/^export\s+/gm,'')+'\nconst stops=tourStops;\n'+gallery.replace(/^import[^;]+;\s*/gm, '');
 const script = (vendor+'\n'+app).replace(/<\/script/gi,'<\\/script');
+new Script(script, { filename: 'hangul-house.html' });
 const standalone = html.replace(/<link rel="stylesheet"[^>]+>/,()=>`<style>${css}</style>`).replace(/<link rel="icon"[^>]+>/,'').replace(/<script type="module"[^>]+><\/script>/,()=>`<script>${script}</script>`);
 await writeFile(new URL('./hangul-house.html',import.meta.url),standalone);
 console.log('Created self-contained hangul-house.html');

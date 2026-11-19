@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#10100f">
-  <meta name="description" content="어둠과 따뜻한 빛 사이, 한글이 조형물이 되는 공간. 스크롤하며 글자의 집을 한 바퀴 감상하세요.">
+  <meta name="description" content="어둠과 따뜻한 빛 사이, 한글이 조형물이 되는 공간. 스크롤하며 여섯 한글 조형물 가까이 다가가 감상하세요.">
   <title>글자의 집 — A House of Hangul</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
@@ -14,11 +14,11 @@
   <div class="loading" id="loading"><span class="loading-glyph">ㅎ</span><span>글자의 집에 빛을 켜는 중</span></div>
   <div class="experience" id="experience">
     <div class="atmosphere" aria-hidden="true"></div>
-    <div id="stage" role="img" aria-label="따뜻한 조명 아래 한글 입체 조형물이 놓인 집. 스크롤하면 카메라가 집 주위를 한 바퀴 이동합니다."></div>
+    <div id="stage" role="img" aria-label="따뜻한 조명 아래 한글 입체 조형물이 놓인 집. 스크롤하면 각 작품 가까이 다가가 클로즈업합니다. 하단 글자 버튼으로도 작품을 선택할 수 있습니다."></div>
     <div class="vignette" aria-hidden="true"></div>
     <header class="header">
       <a class="brand" href="#home" aria-label="글자의 집 처음으로"><span class="brand-symbol" aria-hidden="true">ㅎ</span><span>글자의 집<small>A HOUSE OF HANGUL</small></span></a>
-      <nav aria-label="주 메뉴"><button type="button" data-goto="0">공간</button><button type="button" data-goto="0.23">조형</button><button type="button" id="about-open">관람 안내</button></nav>
+      <nav aria-label="주 메뉴"><button type="button" data-goto="0">공간</button><button type="button" data-goto="0.13">조형</button><button type="button" id="about-open">관람 안내</button></nav>
       <button class="light-toggle" id="light-toggle" type="button" aria-pressed="false" aria-label="조명을 더 밝게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>조명</span></button>
     </header>
     <main class="story" aria-live="polite" aria-atomic="true">
@@ -29,17 +29,18 @@
       <p class="story-note" id="story-note">여섯 개의 조형, 하나의 공간.</p>
     </main>
     <div class="work-caption" id="work-caption" aria-hidden="true"><span id="work-glyph">ㅇ</span><div><span id="work-name">여백의 형태</span><small id="work-material">PATINATED BRONZE</small></div></div>
-    <div class="orbit-indicator" aria-label="관람 회전 각도"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="29"/><path d="M36 2v8M36 62v8M2 36h8M62 36h8"/><circle class="orbit-point" id="orbit-point" cx="36" cy="7" r="3"/></svg><span id="angle">0°</span><small>AROUND THE HOUSE</small></div>
+    <div class="orbit-indicator" aria-label="관람 진행률"><svg viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="29"/><path d="M36 2v8M36 62v8M2 36h8M62 36h8"/><circle class="orbit-point" id="orbit-point" cx="36" cy="7" r="3"/></svg><span id="angle">0%</span><small>THROUGH THE HOUSE</small></div>
+    <div class="view-controls" role="group" aria-label="화면 확대 및 축소"><span class="view-label" id="view-label">공간 둘러보기</span><div class="zoom-buttons"><button type="button" id="zoom-out" aria-label="축소" title="축소 (−)">−</button><output id="zoom-value" aria-label="확대 배율">100%</output><button type="button" id="zoom-in" aria-label="확대" title="확대 (+)">+</button></div><button type="button" id="zoom-reset" class="zoom-reset" title="확대 배율 복원 (0)">배율 복원</button></div>
     <footer class="controls">
-      <button class="scroll-cue" id="next-stop" type="button"><span class="mouse" aria-hidden="true"><i></i></span><span id="scroll-label">스크롤하며 둘러보세요<small>SCROLL TO EXPLORE</small></span></button>
-      <nav class="journey-nav" aria-label="관람 시점 선택"><button type="button" data-stop="0" class="active" aria-current="step" aria-label="집 전체 보기">집</button><button type="button" data-stop="1" aria-label="기역, 시작의 모양">ㄱ</button><button type="button" data-stop="2" aria-label="이응, 여백의 형태">ㅇ</button><button type="button" data-stop="3" aria-label="미음, 마음의 방">ㅁ</button><button type="button" data-stop="4" aria-label="히읗, 빛의 숨">ㅎ</button><button type="button" data-stop="5" aria-label="다시, 글자의 집">집</button><span class="nav-progress" id="nav-progress" aria-hidden="true"></span></nav>
+      <button class="scroll-cue" id="next-stop" type="button"><span class="mouse" aria-hidden="true"><i></i></span><span id="scroll-label">스크롤하며 작품 가까이<small>SCROLL TO DISCOVER</small></span></button>
+      <nav class="journey-nav" aria-label="관람 시점 선택"><button type="button" data-stop="0" class="active" aria-current="step" aria-label="집 전체 보기">집</button><button type="button" data-stop="1" aria-label="기역 클로즈업, 시작의 모양">ㄱ</button><button type="button" data-stop="2" aria-label="이응 클로즈업, 여백의 형태">ㅇ</button><button type="button" data-stop="3" aria-label="미음 클로즈업, 마음의 방">ㅁ</button><button type="button" data-stop="4" aria-label="히읗 클로즈업, 빛의 숨">ㅎ</button><button type="button" data-stop="5" aria-label="아 클로즈업, 열린 방향">ㅏ</button><button type="button" data-stop="6" aria-label="시옷 클로즈업, 서로를 향한 선">ㅅ</button><button type="button" data-stop="7" aria-label="다시, 글자의 집">집</button><span class="nav-progress" id="nav-progress" aria-hidden="true"></span></nav>
       <span class="collection-label">COLLECTION OF CHARACTERS<br><span>HANGUL · LIGHT · SPACE</span></span>
     </footer>
     <div class="page-progress" aria-hidden="true"><span id="page-progress"></span></div>
     <div class="fallback" id="fallback" hidden><div class="fallback-house" aria-hidden="true"><span>ㄱ</span><span>ㅇ</span><span>ㅁ</span><span>ㅎ</span></div><p>이 브라우저에서는 3D 화면을 열 수 없어요.<br>WebGL을 지원하는 브라우저로 다시 방문해 주세요.</p></div>
   </div>
-  <div class="scroll-track" id="journey" aria-label="스크롤 관람 경로"><section id="home" aria-label="집 전체"><h2 class="sr-only">글자가 머무는 집</h2></section><section aria-label="기역의 방"><h2 class="sr-only">ㄱ, 시작의 모양</h2></section><section aria-label="이응의 방"><h2 class="sr-only">ㅇ, 여백의 형태</h2></section><section aria-label="미음의 방"><h2 class="sr-only">ㅁ, 마음의 방</h2></section><section aria-label="히읗의 방"><h2 class="sr-only">ㅎ, 빛의 숨</h2></section><section aria-label="다시 집으로"><h2 class="sr-only">한 바퀴, 새로운 시선</h2></section></div>
-  <dialog id="about-dialog" aria-labelledby="about-title"><button class="dialog-close" id="about-close" type="button" aria-label="관람 안내 닫기">닫기 <span aria-hidden="true">×</span></button><p class="eyebrow">VISITING THE HOUSE</p><h2 id="about-title">천천히,<br>한 바퀴.</h2><p>글자의 집은 한글의 형태를 빛과 재료로 탐구하는 디지털 조형 갤러리입니다. 조형물과 공간은 이 전시를 위해 창작했습니다.</p><dl><dt>관람 방법</dt><dd>아래로 스크롤하면 카메라가 집 주위를 한 바퀴 돕니다. 위로 스크롤하면 관람 경로를 되짚을 수 있어요.</dd><dt>원하는 시점으로</dt><dd>화면 아래 글자를 눌러 해당 시점으로 이동하세요. 키보드의 Page Down·Page Up도 사용할 수 있습니다.</dd><dt>빛의 분위기</dt><dd>오른쪽 위 ‘조명’ 버튼으로 은은한 빛과 밝은 빛을 바꿀 수 있어요.</dd></dl><p class="dialog-footnote">소리를 켜지 않아도 온전히 감상할 수 있는 공간.</p></dialog>
+  <div class="scroll-track" id="journey" aria-label="스크롤 관람 경로"><section id="home" aria-label="집 전체"><h2 class="sr-only">글자가 머무는 집</h2></section><section aria-label="기역의 방"><h2 class="sr-only">ㄱ, 시작의 모양</h2></section><section aria-label="이응의 방"><h2 class="sr-only">ㅇ, 여백의 형태</h2></section><section aria-label="미음의 방"><h2 class="sr-only">ㅁ, 마음의 방</h2></section><section aria-label="히읗의 방"><h2 class="sr-only">ㅎ, 빛의 숨</h2></section><section aria-label="모음의 방"><h2 class="sr-only">ㅏ, 열린 방향</h2></section><section aria-label="시옷의 방"><h2 class="sr-only">ㅅ, 서로를 향한 선</h2></section><section aria-label="다시 집으로"><h2 class="sr-only">한 바퀴, 새로운 시선</h2></section></div>
+  <dialog id="about-dialog" aria-labelledby="about-title"><button class="dialog-close" id="about-close" type="button" aria-label="관람 안내 닫기">닫기 <span aria-hidden="true">×</span></button><p class="eyebrow">VISITING THE HOUSE</p><h2 id="about-title">천천히,<br>가까이.</h2><p>글자의 집은 한글의 형태를 빛과 재료로 탐구하는 디지털 조형 갤러리입니다. 조형물과 공간은 이 전시를 위해 창작했습니다.</p><dl><dt>관람 방법</dt><dd>아래로 스크롤하면 각 작품의 눈높이로 다가가 가까이 감상한 뒤, 다음 작품으로 이동합니다. 위로 스크롤하면 관람 경로를 되짚을 수 있어요.</dd><dt>작품 바로 보기</dt><dd>조형물 또는 화면 아래 글자를 누르면 해당 작품을 클로즈업합니다. 키보드의 Page Down·Page Up으로도 관람할 수 있습니다.</dd><dt>확대와 축소</dt><dd>오른쪽 +·− 버튼으로 더 가까이 보거나 물러나세요. ‘배율 복원’으로 원래 배율로 돌아옵니다. 키보드 +·−·0도 사용할 수 있어요.</dd><dt>빛의 분위기</dt><dd>오른쪽 위 ‘조명’ 버튼으로 은은한 빛과 밝은 빛을 바꿀 수 있어요.</dd></dl><p class="dialog-footnote">소리를 켜지 않아도 온전히 감상할 수 있는 공간.</p></dialog>
   <noscript><p class="noscript">이 전시는 JavaScript가 필요합니다. 브라우저에서 JavaScript를 켜주세요.</p></noscript>
   <script type="module" src="./gallery.js"></script>
 </body>

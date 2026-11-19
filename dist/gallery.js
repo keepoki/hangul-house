@@ -1,20 +1,24 @@
 import * as THREE from './assets/three.module.js';
+import { tourStops as stops, tourGlyphs, chapterAt, sampleTour } from './camera-tour.js';
 
 const $ = (id) => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
-const stops = [0, .19, .38, .57, .76, 1];
 const chapters = [
   {eyebrow:'A QUIET MUSEUM OF LETTERS', title:'글자가<br>머무는 집.', body:'익숙한 글자를, 낯선 시선으로.<br>빛과 그림자 사이에서 한글을 만납니다.',note:'여섯 개의 조형, 하나의 공간.',glyph:'ㅇ',name:'여백의 형태',material:'PATINATED BRONZE'},
   {eyebrow:'GIYEOK · THE BEGINNING', title:'시작은,<br>하나의 꺾임.', body:'선이 방향을 바꾸는 순간.<br>단단한 돌 위에 첫 소리가 놓입니다.',note:'ㄱ · 석회암 · 시작의 모양',glyph:'ㄱ',name:'시작의 모양',material:'WARM LIMESTONE'},
   {eyebrow:'IEUNG · THE EMPTY SPACE', title:'비어 있어,<br>가득한 형태.', body:'닫힌 원 안에 열린 풍경.<br>청동의 둥근 여백으로 빛이 흐릅니다.',note:'ㅇ · 청동 · 여백의 형태',glyph:'ㅇ',name:'여백의 형태',material:'PATINATED BRONZE'},
   {eyebrow:'MIEUM · A ROOM WITHIN', title:'마음에도,<br>방이 있다면.', body:'네 개의 선이 감싸는 작은 세계.<br>붉은 흙의 온기가 공간에 머뭅니다.',note:'ㅁ · 테라코타 · 마음의 방',glyph:'ㅁ',name:'마음의 방',material:'FIRED TERRACOTTA'},
   {eyebrow:'HIEUT · A BREATH OF LIGHT', title:'소리가 빛이<br>되는 순간.', body:'작은 획과 둥근 숨.<br>고요한 한글의 형태가 어둠을 밝힙니다.',note:'ㅎ · 황동 · 빛의 숨',glyph:'ㅎ',name:'빛의 숨',material:'BRUSHED BRASS'},
+  {eyebrow:'A · AN OPEN DIRECTION', title:'하나의 선,<br>열린 방향.', body:'곧게 선 획에서 뻗어 나오는 여운.<br>초록빛 표면을 따라 새로운 방향이 열립니다.',note:'ㅏ · 녹청 · 열린 방향',glyph:'ㅏ',name:'열린 방향',material:'PATINATED METAL'},
+  {eyebrow:'SIOT · TWO LINES MEET', title:'서로를 향해,<br>기울어진 선.', body:'두 개의 선이 만나 하나의 형태로.<br>매끄러운 도자기 위에 부드러운 빛이 맺힙니다.',note:'ㅅ · 도자기 · 서로를 향한 선',glyph:'ㅅ',name:'서로를 향한 선',material:'IVORY CERAMIC'},
   {eyebrow:'BACK HOME · A NEW PERSPECTIVE', title:'한 바퀴,<br>새로운 시선.', body:'같은 글자, 달라진 풍경.<br>한글의 또 다른 얼굴을 발견하셨나요.',note:'글자의 집 · 빛과 형태의 수집',glyph:'ㅅ',name:'서로를 향한 선',material:'IVORY CERAMIC'}
 ];
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
 let bright = false, textTimer, scrollHeight = 1;
+let zoom = 1, desiredZoom = 1;
 const lamps = [], roofPanels = [], occluders = [];
+const sculptures = [];
 const stage = $('stage');
 const clamp = THREE.MathUtils.clamp;
 
@@ -25,8 +29,25 @@ function updateScroll() {
   else requestDraw();
 }
 function goTo(p) {
+  setZoom(1);
   scrollTo({ top: p * Math.max(1, document.documentElement.scrollHeight - innerHeight), behavior: motion.matches ? 'instant' : 'smooth' });
 }
+function setZoom(value) {
+  desiredZoom = clamp(value,.75,1.8);
+  if(motion.matches)zoom=desiredZoom;
+  $('zoom-in').disabled=desiredZoom>=1.8;
+  $('zoom-out').disabled=desiredZoom<=.75;
+  requestDraw();
+}
+$('zoom-in').addEventListener('click',()=>setZoom(desiredZoom+.15));
+$('zoom-out').addEventListener('click',()=>setZoom(desiredZoom-.15));
+$('zoom-reset').addEventListener('click',()=>setZoom(1));
+addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey||dialog.open||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable)return;
+  if(['+','=','-','0'].includes(e.key)) {
+    e.preventDefault();setZoom(e.key==='0'?1:desiredZoom+(e.key==='-'?-.15:.15));
+  }
+});
 document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => goTo(Number(b.dataset.goto))));
 document.querySelectorAll('[data-stop]').forEach(b => b.addEventListener('click', () => goTo(stops[Number(b.dataset.stop)])));
 $('next-stop').addEventListener('click', () => goTo(desired > .985 ? 0 : (stops.find(s => s > desired + .025) ?? 1)));
@@ -45,7 +66,7 @@ dialog.addEventListener('click', e => { if (e.target === dialog) { const r=dialo
 addEventListener('scroll', updateScroll, { passive:true });
 
 function updateChapter() {
-  const index = Math.min(5, Math.floor(progress * 5 + .27));
+  const index = chapterAt(progress);
   if (index === chapter) return;
   chapter = index;
   const data = chapters[index];
@@ -66,7 +87,7 @@ function updateChapter() {
     b.classList.toggle('active', i===index);
     if(i===index) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current');
   });
-  $('scroll-label').innerHTML = index===5 ? '처음으로 돌아가기<small>BACK TO THE HOUSE</small>' : '스크롤하며 둘러보세요<small>SCROLL TO EXPLORE</small>';
+  $('scroll-label').innerHTML = index===7 ? '처음으로 돌아가기<small>BACK TO THE HOUSE</small>' : index===0 ? '스크롤하며 작품 가까이<small>SCROLL TO DISCOVER</small>' : '천천히, 다음 작품으로<small>CONTINUE THE JOURNEY</small>';
 }
 
 // All architecture, lettering, materials and lighting are generated locally.
@@ -117,6 +138,7 @@ function squareRing(mat,parent) {
 }
 function glyph(type,mat,x,z,scale=1,rotation=0) {
   const g=new THREE.Group();house.add(g);g.position.set(x,1.08,z);g.scale.setScalar(scale);g.rotation.y=rotation;
+  g.userData.artGlyph=type;sculptures.push(g);
   if(type==='ㄱ') {bar(-.8,2.1,.7,2.1,.39,.48,mat,g);bar(.7,2.1,.7,.12,.39,.48,mat,g);}
   if(type==='ㅇ') ring(.95,.23,mat,g,0,1.19,0);
   if(type==='ㅁ') squareRing(mat,g);
@@ -218,7 +240,7 @@ function setup() {
     const target=new THREE.Object3D();target.position.set(art.x,1.7,art.z);scene.add(target);
     const spot=new THREE.SpotLight('#ffdbab',155,13,.48,.75,1.8);spot.position.set(sx,ly,sz);spot.target=target;
     spot.castShadow=true;spot.shadow.mapSize.set(768,768);spot.shadow.bias=-.0003;spot.shadow.normalBias=.045;spot.shadow.camera.near=.2;spot.shadow.camera.far=15;spot.shadow.blurSamples=8;spot.userData.base=155;
-    scene.add(spot);lamps.push(spot);
+    spot.userData.artGlyph=art.char;scene.add(spot);lamps.push(spot);
     const fixture=mesh(new THREE.CylinderGeometry(.105,.105,.34,16),blackMetal,sx,ly+.05,sz);fixture.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),target.position.clone().sub(fixture.position).normalize());
     const bulb=mesh(new THREE.CircleGeometry(.077,20),new THREE.MeshBasicMaterial({color:'#ffe3b5'}),0,0,0,fixture);bulb.position.y=-.173;bulb.rotation.x=Math.PI/2;
     box(1.3,.055,.07,blackMetal,sx,ly+.3,sz);
@@ -240,6 +262,18 @@ function setup() {
   for(let i=0;i<p.length;i++){s=(s*16807)%2147483647;p[i]=((s%1000)/1000-.5)*(i%3===1?9:23);if(i%3===1)p[i]+=5;}
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(p,3));
   dust=new THREE.Points(pg,new THREE.PointsMaterial({color:'#dbbc82',size:.017,transparent:true,opacity:.23,depthWrite:false}));scene.add(dust);
+  const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+  function pickArtwork(e) {
+    const rect=renderer.domElement.getBoundingClientRect();
+    pointer.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+    raycaster.setFromCamera(pointer,camera);
+    let picked=raycaster.intersectObjects(sculptures,true)[0]?.object;
+    while(picked&&!picked.userData.artGlyph)picked=picked.parent;
+    return picked?.userData.artGlyph;
+  }
+  stage.addEventListener('click',e=>{const art=pickArtwork(e);if(art)goTo(stops[tourGlyphs.indexOf(art)+1]);});
+  stage.addEventListener('pointermove',e=>{if(e.pointerType!=='touch')renderer.domElement.style.cursor=pickArtwork(e)?'pointer':'default';});
+  stage.addEventListener('pointerleave',()=>{renderer.domElement.style.cursor='default';});
   resize();
   renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
   updateScroll();requestDraw();
@@ -260,29 +294,31 @@ function draw(time) {
   frame=0;
   const dt=Math.min(.05,(time-lastTime)/1000||.016);lastTime=time;
   progress=motion.matches?desired:THREE.MathUtils.damp(progress,desired,7,dt);
+  zoom=motion.matches?desiredZoom:THREE.MathUtils.damp(zoom,desiredZoom,9,dt);
   if(Math.abs(progress-desired)<.00006)progress=desired;
+  if(Math.abs(zoom-desiredZoom)<.0001)zoom=desiredZoom;
   if(camera) {
-    // Exactly one revolution: both ends share the same camera position.
-    const orbit = motion.matches ? stops[Math.min(5, Math.floor(progress*5+.27))] : progress;
-    const theta=.46+orbit*Math.PI*2;
     const mobile=innerWidth<761;
-    const radius=mobile?30:25.7;
-    const breath=Math.sin(progress*Math.PI*2)**2;
-    camera.position.set(Math.sin(theta)*radius,12.1+breath*1.4,Math.cos(theta)*radius);
-    camera.lookAt(0,mobile?2.45:2.65,0);
-    camera.fov=mobile?43:35;camera.updateProjectionMatrix();
-    const nearZ=Math.cos(theta);
-    roofPanels.forEach(p=>{p.mesh.material.opacity=THREE.MathUtils.lerp(.96,.065,THREE.MathUtils.smoothstep(p.side*nearZ,-.15,.25));});
-    occluders.forEach(m=>{m.material.opacity=THREE.MathUtils.lerp(.09,1,THREE.MathUtils.smoothstep(nearZ,-.35,.15));m.material.depthWrite=m.material.opacity>.98;});
+    const pose=sampleTour(progress,{mobile,reducedMotion:motion.matches,zoom});
+    camera.position.fromArray(pose.position);camera.lookAt(...pose.target);
+    camera.fov=pose.fov;camera.updateProjectionMatrix();
+    const nearZ=camera.position.z/Math.hypot(camera.position.x,camera.position.z);
+    roofPanels.forEach(p=>{p.mesh.material.opacity=THREE.MathUtils.lerp(.96,.065,THREE.MathUtils.smoothstep(p.side*nearZ,-.15,.25))*(1-pose.focus*.45);});
+    occluders.forEach(m=>{m.material.opacity=THREE.MathUtils.lerp(.09,1,THREE.MathUtils.smoothstep(nearZ,-.35,.15));if(nearZ<0)m.material.opacity*=1-pose.focus*.7;m.material.depthWrite=m.material.opacity>.98;});
+    const selected=chapters[pose.chapter].glyph;
+    lamps.forEach(l=>{const accent=l.userData.artGlyph===selected?1+pose.focus*.2:1-pose.focus*.48;l.intensity=l.userData.base*accent*(bright?1.25:1);});
+    $('experience').classList.toggle('is-detail',pose.focus>.35);
+    $('view-label').textContent=pose.focus>.65?'작품 클로즈업':'공간 둘러보기';
     if(dust) dust.rotation.y=progress*.12;
     renderer.render(scene,camera);
   }
-  $('angle').textContent=`${Math.round(progress*360)}°`;
+  $('angle').textContent=`${Math.round(progress*100)}%`;
+  $('zoom-value').textContent=`${Math.round(zoom*100)}%`;
   $('orbit-point').style.transform=`rotate(${progress*360}deg)`;
   $('page-progress').style.width=`${progress*100}%`;
   $('nav-progress').style.width=`${progress*100}%`;
   updateChapter();
-  if(Math.abs(progress-desired)>.00001)requestDraw();
+  if(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001)requestDraw();
 }
 try { setup(); } catch(error) {
   console.error('The gallery could not initialize:',error);
