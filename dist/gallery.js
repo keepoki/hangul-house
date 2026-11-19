@@ -11,6 +11,7 @@ import { chapters } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
 let reflectingPool=null;
+let environmentDetail;
 let heroBounds,paused=false,renderFailed=false;
 const artworkBounds=[],detailMeshes=[],blockers=[];
 let bright = false, textTimer, scrollHeight = 1;
@@ -122,7 +123,7 @@ function setup() {
   renderer.domElement.addEventListener('webglcontextrestored',()=>{ /* Recovery is user-initiated, preserving workshop state. */ });
   house=new THREE.Group();scene.add(house);
   scene.fog.density=.009;
-  const environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761});
+  environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761,progressive:true,onSurfaceReady:requestDraw});
   const {limestone,dark,floor,timber,hall,gravel,soil}=environmentDetail.materials;
   const blackMetal=material('#343632',.4,.45);
   const bronze=material('#c59c5e',.3,.68);
@@ -273,8 +274,31 @@ function setup() {
   stage.addEventListener('pointerleave',()=>{renderer.domElement.style.cursor='default';});
   resize();
   renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
-  updateScroll();requestDraw();
+  // The opening shot is always the first frame, independent of the old document's scroll offset.
+  progress=desired=0;cancelDraw();
   draw(performance.now(),true);
+}
+
+function prepareBackground(){
+  if(renderFailed)return;
+  const idle=callback=>typeof requestIdleCallback==='function'?requestIdleCallback(callback,{timeout:1000}):setTimeout(callback,16);
+  // A full-size texture is generated off the UI thread, and the original map is upgraded in place.
+  const workerFactory=typeof Worker==='function'&&location.protocol!=='file:'?()=>new Worker(new URL('./surface-worker.js',document.baseURI),{type:'module'}):undefined;
+  environmentDetail.hydrate({workerFactory,schedule:idle});
+  // The opening view needs no exhibition spotlights or their shadow maps. Prepare tour shaders
+  // after the first frame only on devices that support non-blocking shader compilation.
+  if(renderer.compileAsync&&renderer.extensions?.has('KHR_parallel_shader_compile'))idle(()=>{
+    if(renderFailed||paused||progress>.035)return;
+    const snapshots=exhibitionGroups.map(group=>group.lighting.map(light=>[light,light.visible]));
+    try{
+      for(const entries of snapshots)for(const [light] of entries)light.visible=true;
+      for(const group of exhibitionGroups)for(const item of group.fading)item.material.transparent=item.transparent;
+      renderer.compileAsync(scene,camera).catch(()=>{});
+    }catch{}finally{
+      for(const entries of snapshots)for(const [light,visible] of entries)light.visible=visible;
+      for(const group of exhibitionGroups)for(const item of group.fading)item.material.transparent=group.reveal<.999||item.transparent;
+    }
+  });
 }
 
 function resize() {
@@ -313,7 +337,7 @@ function draw(time,force=false) {
     const reveal=Math.min(THREE.MathUtils.smoothstep(progress,.035,.075),1-THREE.MathUtils.smoothstep(progress,.9,.95));
     exhibitionGroups.forEach(group=>{
       const visible=reveal>.001;
-      if(visible!==group.visible){renderer.shadowMap.needsUpdate=true;group.visible=visible;group.objects.forEach(object=>object.visible=visible);}
+      if(visible!==group.visible){renderer.shadowMap.needsUpdate=true;group.visible=visible;group.objects.forEach(object=>object.visible=visible);group.lighting.forEach(light=>light.visible=visible);}
       if(group.reveal===reveal)return;group.reveal=reveal;
       group.fading.forEach(item=>{item.material.opacity=item.opacity*reveal;item.material.transparent=reveal<.999||item.transparent;item.material.depthWrite=reveal<.999?false:item.depthWrite;});
       group.lighting.filter(light=>!light.isSpotLight).forEach(light=>{light.userData.restIntensity??=light.intensity;light.intensity=light.userData.restIntensity*reveal;});
@@ -332,6 +356,8 @@ function draw(time,force=false) {
 }
 export function initGallery(){
   setup();
+  // Give the browser a paint opportunity before scheduling background work.
+  requestAnimationFrame(()=>setTimeout(prepareBackground,0));
   return {
     goTo,setZoom,toggleLighting,refresh(){resize();updateScroll();},
     pause(){paused=true;cancelDraw();},resume(){if(renderFailed)return;paused=false;lastTime=0;resize();updateScroll();requestDraw();},

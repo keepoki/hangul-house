@@ -47,3 +47,14 @@ test('a failed gallery import is caught by the inline bootstrap',async()=>{
   assert.equal(failed,true);
   assert.ok(html.includes('data-view="static"'));assert.equal([...html.matchAll(/class="text-room"/g)].length,6);
 });
+test('fresh reload disables scroll restoration and starts 3D from the opening',async()=>{
+  const html=await readFile(new URL('../dist/index.html',import.meta.url),'utf8'),f=fixture();
+  const head=html.match(/<script>([\s\S]*?)<\/script>/)[1],calls=[],history={scrollRestoration:'auto',state:null,replaceState(...args){calls.push(args);}};
+  new Function('history','location','performance',head)(history,{hash:'#room-water',pathname:'/',search:''},{getEntriesByType:()=>[{type:'reload'}]});
+  assert.equal(history.scrollRestoration,'manual');assert.deepEqual(calls,[[null,'','/']]);
+  let code=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].trim();
+  const order=[],position={offset:3500};
+  code=code.replace("import('./interface.js')",'Promise.resolve({initInterface:()=>ui})').replace("import('./gallery.js')",'Promise.resolve({initGallery:()=>{order.push(position.offset);return {};}})');
+  await new Function('document','window','ui','order','position','return '+code)(f.document,{scrollTo(options){order.push(options.top);position.offset=options.top;}},{wantsText:()=>false,attach(){order.push('attached');},fail(error){throw error;}},order,position);
+  assert.deepEqual(order,[0,0,'attached']);assert.equal(f.document.documentElement.dataset.view,'3d');
+});

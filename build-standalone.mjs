@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { Script } from 'node:vm';
 const base=new URL('./dist/',import.meta.url);
-const files=['index.html','style.css','assets/three.module.js','assets/cannon-es.js','exhibition-layout.js','hangul-building.js','exhibition-content.js','camera-tour.js','environment.js','scene-quality.js','workshop-physics.js','workshop.js','interface.js','gallery.js'];
+const files=['index.html','style.css','assets/three.module.js','assets/cannon-es.js','exhibition-layout.js','hangul-building.js','exhibition-content.js','camera-tour.js','surface-textures.js','environment.js','scene-quality.js','workshop-physics.js','workshop.js','interface.js','gallery.js'];
 const data=Object.fromEntries(await Promise.all(files.map(async name=>[name,await readFile(new URL(name,base),'utf8')])));
 function vendor(name,text){
  const found=text.match(/export\s*\{([^}]+)\}\s*;?\s*$/);
@@ -12,7 +12,7 @@ function vendor(name,text){
 const inline=text=>text.replace(/^import[^;]+;\s*/gm,'').replace(/^export\s+/gm,'');
 const licenses={};
 for(const file of ['THREE-LICENSE.txt','CANNON-LICENSE.txt','FONT-LICENSE.txt'])licenses[file]=await readFile(new URL('assets/'+file,base),'utf8');
-const app=['exhibition-layout.js','hangul-building.js','exhibition-content.js','camera-tour.js','environment.js','scene-quality.js'].map(file=>inline(data[file])).join('\n')+'\nconst stops=tourStops;\n'+['workshop-physics.js','workshop.js','interface.js','gallery.js'].map(file=>inline(data[file])).join('\n');
+const app=['exhibition-layout.js','hangul-building.js','exhibition-content.js','camera-tour.js','surface-textures.js','environment.js','scene-quality.js'].map(file=>inline(data[file])).join('\n')+'\nconst stops=tourStops;\n'+['workshop-physics.js','workshop.js','interface.js','gallery.js'].map(file=>inline(data[file])).join('\n');
 const body=app.replace("import('./workshop.js')","Promise.resolve({createWorkshop})").replace("fetch('./assets/'+file)","Promise.resolve({ok:true,text:async()=>inlineLicenses[file]})");
 let html=data['index.html'],css=data['style.css'];
 const original=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
@@ -23,6 +23,6 @@ new Script(script,{filename:'hangul-house.html'});
 const font='data:font/ttf;base64,'+(await readFile(new URL('assets/gowun-batang.ttf',base))).toString('base64');
 const poster='data:image/svg+xml;base64,'+(await readFile(new URL('assets/house-plan.svg',base))).toString('base64');
 css=css.replace('./assets/gowun-batang.ttf',font);
-html=html.replace(/<link rel="icon"[^>]+>/,'').replace(/<link rel="stylesheet"[^>]+>/,()=>'<style>'+css+'</style>').replace('./assets/gowun-batang.ttf',font).replace('./assets/house-plan.svg',poster).replace(/<script type="module">[\s\S]*?<\/script>/,()=>'<script>'+script+'</script>');
+html=html.replace(/<link rel="icon"[^>]+>/,'').replace(/<link rel="modulepreload"[^>]+>\s*/g,'').replace(/<link rel="stylesheet"[^>]+>/,()=>'<style>'+css+'</style>').replace('./assets/gowun-batang.ttf',font).replace('./assets/house-plan.svg',poster).replace(/<script type="module">[\s\S]*?<\/script>/,()=>'<script>'+script+'</script>');
 await writeFile(new URL('./hangul-house.html',import.meta.url),html);
 console.log('Created self-contained exhibition, physics workshop and license notices');

@@ -20,16 +20,16 @@ function element(id='') {
 const context={createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){},fillRect(){},beginPath(){},moveTo(){},bezierCurveTo(){},stroke(){},fillText(){}};
 const canvas=()=>({width:0,height:0,getContext:()=>context});
 const document={getElementById:element,querySelector:element,querySelectorAll:()=>[],createElement:canvas,addEventListener(){},hidden:false,documentElement:{scrollHeight:6300,dataset:{view:'3d'}}};
-let renderedScene,renderedCamera,lastScroll,clock=0,renderCount=0;
+let renderedScene,renderedCamera,lastScroll,clock=0,renderCount=0,initialFrame;
 class Renderer {
   constructor(){this.domElement=element('canvas');this.shadowMap={};}
   setClearColor(){}setPixelRatio(){}setSize(){}
-  render(s,c){s.updateMatrixWorld(true);c.updateMatrixWorld(true);renderedScene=s;renderedCamera=c;renderCount++;}
+  render(s,c){s.updateMatrixWorld(true);c.updateMatrixWorld(true);renderedScene=s;renderedCamera=c;renderCount++;if(!initialFrame){const maps=new Set();s.traverseVisible(o=>{if(o.isMesh)for(const k of ['map','normalMap','roughnessMap'])if(o.material[k]?.isDataTexture)maps.add(o.material[k]);});initialFrame={position:c.position.clone(),visibleSpots:s.children.filter(o=>o.isSpotLight&&o.visible).length,maxMapSize:Math.max(...[...maps].map(m=>m.image.width))};}}
 }
 const THREE={...Three,WebGLRenderer:Renderer},errors=[];
 const media={matches:false,addEventListener(){}};
 const boot=new Function('THREE','sampleTour','fitTourPose','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','batchStaticBoxes','detailCount','pickVisibleArtwork','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console',source+'\nconst controls=initGallery();return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};');
-const app=boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,0,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
+const app=boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,3500,v=>lastScroll=v,()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
 function sample(p){clock+=17;return app.sample(p,clock);}
 function settle(){for(let i=0;i<100;i++){clock+=17;app.tick(clock);}}
 function artwork(char){let found;renderedScene.traverse(o=>{if(o.userData.artGlyph===char&&o.isGroup)found=o;});return found;}
@@ -39,6 +39,12 @@ function projectedBounds(object,camera=renderedCamera){
   return {height:Math.max(...points.map(v=>v.y))-Math.min(...points.map(v=>v.y)),points};
 }
 sample(0);
+
+test('the first render ignores a restored mid-tour offset and has only opening assets',()=>{
+  assert.ok(initialFrame.position.distanceTo(renderedCamera.position)<.001);
+  assert.equal(initialFrame.visibleSpots,0);assert.equal(initialFrame.maxMapSize,32);
+  sample(stops[1]);assert.ok(renderedScene.children.filter(o=>o.isSpotLight&&o.visible).length===6);
+});
 
 test('all six independent installations have a complete, centered close-up',()=>{
   assert.deepEqual(errors,[]);

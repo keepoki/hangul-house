@@ -3,11 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+// Set this before the browser restores the previous scroll position on a reload.
+if('scrollRestoration' in history)history.scrollRestoration='manual';
+if(location.hash&&performance.getEntriesByType?.('navigation')[0]?.type==='reload')history.replaceState(history.state,'',location.pathname+location.search);
+</script>
 <meta name="theme-color" content="#11120f">
 <meta name="description" content="한글의 선이 기둥과 지붕이 되는 디지털 전시. 여섯 공간을 둘러보고, 중력과 충돌이 있는 한글 작업실에서 나만의 집을 지어보세요.">
 <title>글자의 집 — 한글의 선으로 공간을 짓다</title>
 <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./style.css">
+<link rel="modulepreload" href="./assets/three.module.js">
+<link rel="modulepreload" href="./gallery.js">
 <link rel="preload" href="./assets/gowun-batang.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body id="home">
@@ -86,7 +93,7 @@
 <script type="module">
 import('./interface.js').then(async ({initInterface}) => {
  const ui=initInterface();
- try {const gallery=await import('./gallery.js');if(ui.wantsText())return;document.documentElement.dataset.view='3d';ui.attach(gallery.initGallery());}
+ try {const gallery=await import('./gallery.js');if(ui.wantsText())return;document.documentElement.dataset.view='3d';window.scrollTo({top:0,left:0,behavior:'instant'});ui.attach(gallery.initGallery());}
  catch(error){ui.fail(error);}
 }).catch(()=>{
  document.documentElement.dataset.view='static';document.documentElement.dataset.state='error';

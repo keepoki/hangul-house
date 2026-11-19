@@ -1,39 +1,31 @@
+import {createSurfacePixels} from './surface-textures.js';
 // Procedural architectural materials and landscaping. All geometry and maps are authored locally.
-export function createEnvironment(THREE, {mobile=false}={}) {
+export function createEnvironment(THREE, {mobile=false,progressive=false,onSurfaceReady=()=>{}}={}) {
   const {PI,sin,cos,pow,sqrt,floor,abs}=Math;
-  const clamp=(n,b=0,t=1)=>Math.max(b,Math.min(t,n));
   function random(seed){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
   function hash(x,y,seed=1){let n=Math.imul(x,374761393)+Math.imul(y,668265263)+Math.imul(seed,1274126177);n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295;}
-  function noise(x,y,seed){const i=floor(x),j=floor(y),a=x-i,b=y-j;const u=a*a*(3-2*a),v=b*b*(3-2*b);const p=hash(i,j,seed),q=hash(i+1,j,seed),r=hash(i,j+1,seed),s=hash(i+1,j+1,seed);return (p+(q-p)*u)*(1-v)+(r+(s-r)*u)*v;}
-  function fbm(x,y,seed){return .53*noise(x,y,seed)+.25*noise(x*2.07,y*2.07,seed+12)+.14*noise(x*4.13,y*4.13,seed+37)+.08*noise(x*8.19,y*8.19,seed+53);}
+  const pending=new Map();let hydrationStarted=false;
   function texture(bytes,w,h,srgb=false){const t=new THREE.DataTexture(bytes,w,h);t.colorSpace=srgb?THREE.SRGBColorSpace:THREE.NoColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=4;t.needsUpdate=true;return t;}
   function surface(kind,base,seed=7){
-    const n=mobile||['gravel','basalt'].includes(kind)?256:512,heights=new Float32Array(n*n),albedo=new Uint8Array(n*n*4),rough=new Uint8Array(n*n*4),normal=new Uint8Array(n*n*4);
-    for(let y=0;y<n;y++)for(let x=0;x<n;x++){
-      const u=x/n,v=y/n,i=y*n+x,k=4*i;let h,shade,roughness;
-      const a=fbm(u*7,v*7,seed),fine=hash(x,y,seed+101)-.5;
-      if(kind==='wood'){
-        const drift=.025*fbm(u*5,v*3,seed+31),knot=.055*Math.exp(-((u-.6)**2*48+(v-.62)**2*110));
-        const grain=u+drift+knot*sin(v*19),waves=sin(grain*PI*75+.9*noise(u*8,v*3,seed));
-        const pores=pow(noise(u*220,v*9,seed+5),5),band=sin(grain*PI*16);
-        h=.5+waves*.06+pores*.07+fine*.025;shade=1+band*.065+waves*.035+pores*.14+(a-.5)*.12+fine*.035;roughness=.53+.13*a+.05*waves;
-      }else{
-        const mote=fbm(u*31,v*31,seed+11),vein=pow(1-abs(sin((u*2.2+v*2.2+fbm(u*4,v*4,seed+9)*1.5)*PI)),14);
-        const pore=pow(noise(u*100,v*100,seed+22),9);
-        const strength=kind==='gravel'?1.7:kind==='basalt'?1.3:1;
-        h=.5+(mote-.5)*.24*strength-pore*.28+fine*.075*strength;
-        shade=1+(a-.5)*.23*strength+(mote-.5)*.15-pore*.4+fine*.07*strength+(kind==='limestone'?vein*.052:0);
-        roughness=(kind==='floor'?.6:.76)+(.5-mote)*.2-pore*.07;
-      }
-      heights[i]=h;for(let c=0;c<3;c++){albedo[k+c]=clamp(base[c]*shade,0,255);rough[k+c]=clamp(roughness*255,0,255);}albedo[k+3]=rough[k+3]=255;
-    }
-    for(let y=0;y<n;y++)for(let x=0;x<n;x++){
-      const k=4*(y*n+x),dx=(heights[y*n+(x+1)%n]-heights[y*n+(x+n-1)%n])*(kind==='gravel'?1.8:.95),dy=(heights[((y+1)%n)*n+x]-heights[((y+n-1)%n)*n+x])*(kind==='gravel'?1.8:.95),l=sqrt(1+dx*dx+dy*dy);
-      normal[k]=127.5*(1-dx/l);normal[k+1]=127.5*(1-dy/l);normal[k+2]=127.5*(1+1/l);normal[k+3]=255;
-    }
-    const map=texture(albedo,n,n,true),roughnessMap=texture(rough,n,n),normalMap=texture(normal,n,n);
+    const n=mobile||['gravel','basalt'].includes(kind)?256:512,initial=progressive?32:n;
+    const {albedo,rough,normal}=createSurfacePixels(kind,base,seed,initial);
+    const map=texture(albedo,initial,initial,true),roughnessMap=texture(rough,initial,initial),normalMap=texture(normal,initial,initial);
     for(const t of [map,roughnessMap,normalMap])t.repeat.set(kind==='wood'?3:kind==='floor'?12:4,kind==='wood'?1:kind==='floor'?12:4);
+    if(progressive){const id=pending.size;pending.set(id,{id,kind,base,seed,n,maps:[map,roughnessMap,normalMap]});}
     return{map,roughnessMap,normalMap};
+  }
+  function hydrate({workerFactory,schedule=(callback)=>setTimeout(callback,0)}={}){
+    if(!pending.size||hydrationStarted)return;hydrationStarted=true;
+    function apply(result){const task=pending.get(result.id);if(!task)return;pending.delete(result.id);
+      [result.albedo,result.rough,result.normal].forEach((data,i)=>{const map=task.maps[i];map.dispose();map.image={data,width:result.n,height:result.n};map.needsUpdate=true;});onSurfaceReady();}
+    // Older browsers and standalone HTML still upgrade one material at a time after the first frame.
+    function fallback(){if(!pending.size)return;const task=pending.values().next().value;
+      schedule(()=>{apply({id:task.id,...createSurfacePixels(task.kind,task.base,task.seed,task.n)});fallback();});}
+    if(!workerFactory){fallback();return;}
+    let worker;
+    try{worker=workerFactory();worker.onmessage=({data})=>{apply(data);if(!pending.size)worker.terminate();};worker.onerror=()=>{worker.terminate();fallback();};
+      worker.postMessage({tasks:[...pending.values()].map(({id,kind,base,seed,n})=>({id,kind,base,seed,n}))});}
+    catch{worker?.terminate();fallback();}
   }
   function architecturalMaterial(type,color,base,roughness=.65,metalness=0,seed=7){
     return new THREE.MeshStandardMaterial({color,roughness,metalness,...surface(type,base,seed),normalScale:new THREE.Vector2(.62,.62),envMapIntensity:.47});
@@ -94,7 +86,7 @@ export function createEnvironment(THREE, {mobile=false}={}) {
     for(let x=-4.7;x<=4.7;x+=.28)solid(parent,.12,4.65,.16,mat,x,2.7,-4.18);
     for(const x of [-3.82,3.82]){solid(parent,1.15,.15,2.3,mat,x,.52,-2.75);solid(parent,.84,.4,1.98,materials.dark,x,.30,-2.75);}
   }
-  return{materials,tree,grasses,rock,pebbles,timberDeck};
+  return{materials,tree,grasses,rock,pebbles,timberDeck,hydrate};
 }
 
 // A small reflected-camera render provides genuine, view-dependent reflections on the pool.

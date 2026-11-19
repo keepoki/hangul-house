@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../dist/assets/three.module.js';
 import {createEnvironment,createReflectingPool} from '../dist/environment.js';
+import {createSurfacePixels} from '../dist/surface-textures.js';
 
 test('architectural surfaces include distinct sampled color, normal and roughness maps',()=>{
   const {materials}=createEnvironment(THREE,{mobile:true});
@@ -20,6 +21,24 @@ test('landscaping uses branching geometry and instanced leaf and pebble detail',
   assert.ok(leaves.isInstancedMesh&&leaves.count>=1000);
   assert.ok(scene.children.find(m=>m.userData.environmentDetail==='pebbles').count>=500);
   assert.ok(scene.children.find(m=>m.userData.environmentDetail==='grass').isInstancedMesh);
+});
+test('startup maps are small and the worker upgrades the existing shared textures',()=>{
+  let worker,notifications=0,disposed=0;
+  const environment=createEnvironment(THREE,{mobile:false,progressive:true,onSurfaceReady:()=>notifications++});
+  const original=environment.materials.limestone.map,cloned=environment.materials.limestone.clone();
+  assert.equal(original.image.width,32);assert.equal(original.image.data.byteLength,4096);original.addEventListener('dispose',()=>disposed++);
+  environment.hydrate({workerFactory:()=>worker={postMessage(data){this.tasks=data.tasks;},terminate(){this.terminated=true;}}});
+  assert.equal(worker.tasks.length,8);
+  for(const task of worker.tasks)worker.onmessage({data:{id:task.id,...createSurfacePixels(task.kind,task.base,task.seed,task.n)}});
+  assert.equal(original.image.width,512);assert.equal(cloned.map,original);assert.equal(notifications,8);assert.equal(disposed,1);assert.equal(worker.terminated,true);
+  assert.equal(environment.materials.gravel.normalMap.image.width,256);
+});
+test('worker failure falls back to individually scheduled texture upgrades',()=>{
+  const env=createEnvironment(THREE,{mobile:true,progressive:true}),tasks=[];let worker;
+  env.hydrate({workerFactory:()=>worker={postMessage(){},terminate(){}},schedule:callback=>tasks.push(callback)});
+  worker.onerror();assert.equal(tasks.length,1);
+  for(let i=0;i<8;i++){assert.equal(tasks.length,1);tasks.shift()();}
+  assert.equal(tasks.length,0);assert.equal(env.materials.limestone.map.image.width,256);assert.equal(env.materials.soil.map.image.width,256);
 });
 test('the reflection pass mirrors the real camera and restores render state',()=>{
   const scene=new THREE.Scene(),group=new THREE.Group();group.position.set(0,.2,8);scene.add(group);
