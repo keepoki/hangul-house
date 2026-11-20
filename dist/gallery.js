@@ -1,5 +1,5 @@
 import * as THREE from './assets/three.module.js';
-import { tourStops as stops, tourGlyphs, chapterAt, sampleTour, fitTourPose } from './camera-tour.js';
+import { tourStops as stops, tourGlyphs, sampleTour, fitTourPose } from './camera-tour.js';
 import { exhibitionSites } from './exhibition-layout.js';
 import { buildHangulBuilding } from './hangul-building.js';
 import { createEnvironment, createReflectingPool } from './environment.js';
@@ -10,6 +10,8 @@ const $ = (id) => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 import { chapters, updateTourNavigation } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
+let shownStory;
+const passageStory={context:'전시 동선',title:'전시실 사이를 걷다.',body:'글자의 선을 따라 다음 공간으로 이동합니다.',note:'',glyph:'',name:'',material:''};
 let scene, camera, renderer, house, dust;
 let stageWidth=0,stageHeight=0,stagePixelRatio=0;
 let reflectingPool=null;
@@ -66,9 +68,15 @@ function toggleLighting(){
   requestDraw();
 }
 
-function updateChapter(){
-  const index=chapterAt(progress);if(index===chapter)return;chapter=index;
-  const data=chapters[index];
+function updateChapter({chapter:index,story}){
+  if(index!==chapter){
+    chapter=index;
+    updateTourNavigation(document,index);
+    $('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
+  }
+  if(story===shownStory)return;
+  shownStory=story;
+  const data=story===null?passageStory:chapters[story];
   $('room-context').textContent=data.context;
   $('story-title').innerHTML=data.title;
   $('story-body').innerHTML=data.body;
@@ -76,10 +84,11 @@ function updateChapter(){
   $('work-glyph').textContent=data.glyph;
   $('work-name').textContent=data.name;
   $('work-material').textContent=data.material;
-  $('story-action').hidden=index!==7;
-  $('structure-action').hidden=index!==0;
-  updateTourNavigation(document,index);
-  $('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
+  $('story-action').hidden=story!==7;
+  $('structure-action').hidden=story!==0;
+  $('story-start').hidden=story!==0;
+  $('experience').classList.toggle('is-detail',story!==null&&story>0&&story<7);
+  setText('view-label',story===null?data.context:(exhibitionSites[story-1]?.room??data.context));
 }
 
 // All architecture, lettering, materials and lighting are generated locally.
@@ -435,7 +444,6 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
     });
     lightArtwork(progress,pose.focus,reveal);
     if(reveal>.001)for(const item of detailMeshes){const count=detailCount(item.mesh.userData.fullDetailCount,camera.position.distanceTo(item.center),item.mesh.userData.environmentDetail);if(count!==item.mesh.count)item.mesh.count=count;}
-    if(!warmOnly&&document.documentElement.dataset.view==='3d'){$('experience').classList.toggle('is-detail',pose.focus>.35);setText('view-label',exhibitionSites[pose.chapter-1]?.room??chapters[pose.chapter].context);}
     if(dust) dust.rotation.y=progress*.12;
     if(!prepareOnly){
       const settled=Math.abs(progress-desired)<.0004&&Math.abs(zoom-desiredZoom)<.0004;
@@ -443,13 +451,17 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
       try{renderer.render(scene,camera);}catch(error){if(force)throw error;failRendering(error);return;}
       if(!force)renderedAt=time;
     }
+    if(!warmOnly&&document.documentElement.dataset.view==='3d'){
+      setText('tour-progress',Math.round(progress*100)+'%');
+      updateChapter(pose);
+    }
   }
-  if(!warmOnly&&document.documentElement.dataset.view==='3d'){setText('tour-progress',Math.round(progress*100)+'%');updateChapter();}
   if(!warmOnly&&!prepareOnly&&(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001||(!motion.matches&&reflectingPool?.animated&&chapter===2)))requestDraw();
   else renderedAt=null;
 }
 export async function initGallery({onProgress=()=>{},shouldContinue=()=>true,onQualityChange=()=>{},onFallback=()=>{}}={}){
   paused=false;renderFailed=false;chapter=-1;governor=null;renderedAt=null;qualityChange=onQualityChange;performanceFallback=onFallback;
+  shownStory=undefined;
   progress=desired=lastTime=stageWidth=stageHeight=stagePixelRatio=0;zoom=desiredZoom=1;bright=false;scrollEnabled=false;
   lamps.length=sculptures.length=exhibitionGroups.length=detailMeshes.length=blockers.length=artworkBounds.length=0;
   reflectingPool=null;renderer=null;dust=null;
@@ -471,7 +483,7 @@ export async function initGallery({onProgress=()=>{},shouldContinue=()=>true,onQ
   draw(performance.now(),true);onProgress(100,'ready');
   return {
     getProgress:()=>progress,
-    seek(value){scrollEnabled=true;progress=desired=clamp(value,0,1);measureScrollHeight();scrollTo({top:progress*scrollHeight,behavior:'instant'});chapter=-1;requestDraw();},
+    seek(value){scrollEnabled=true;progress=desired=clamp(value,0,1);measureScrollHeight();scrollTo({top:progress*scrollHeight,behavior:'instant'});chapter=-1;shownStory=undefined;requestDraw();},
     dispose:disposeGallery,
     goTo,setZoom,toggleLighting,refresh(){resize();measureScrollHeight();updateScroll();},
     pause(){paused=true;cancelDraw();},resume(){if(renderFailed)return;paused=false;lastTime=0;resize();updateScroll();requestDraw();},

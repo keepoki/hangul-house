@@ -91,8 +91,11 @@ document.addEventListener('click',event=>{
 <p class="room-context" id="room-context">한글 건축관</p>
 <p class="story-note" id="story-note">아래로 스크롤해 여섯 공간을 만나보세요.</p>
 </div>
+<div class="story-actions">
+<button class="story-action" id="story-start" type="button" hidden>첫 글자 만나기</button>
 <button class="structure-entry" id="structure-action" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button>
 <button class="story-action" id="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button>
+</div>
 <div class="failure-actions" id="failure-actions" hidden><button type="button" id="retry-gallery">3D 다시 열기</button><a href="#text-tour">전시 설명 읽기</a></div>
 </main>
 <div class="work-caption" id="work-caption" aria-hidden="true"><span id="work-glyph">ㅁ</span><div><span id="work-name">한글로 지은 집</span><small id="work-material">석재 · 참나무 · 짙은 돌</small></div></div>

@@ -70,6 +70,10 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   }
   document.querySelectorAll('[data-stop]').forEach(b=>b.addEventListener('click',()=>go(Number(b.dataset.stop))));
   document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>go(Number(b.dataset.goto)===0?0:1)));
+  $('story-start').addEventListener('click',()=>{
+    go(1);
+    if(isVisual())document.querySelectorAll('[data-stop]')[1]?.focus({preventScroll:true});
+  });
   document.querySelector('.brand').addEventListener('click',e=>{e.preventDefault();go(0);});
   document.querySelectorAll('[data-show-text]').forEach(b=>b.addEventListener('click',()=>showText()));
   document.querySelectorAll('[data-credits]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();showText('credits');}));

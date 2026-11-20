@@ -22,6 +22,12 @@ test('navigation and zoom controls are wired to the 3D controller',()=>{
   assert.ok(calls.some(v=>Array.isArray(v)&&v[0]==='zoom'&&v[1]===.15));
   assert.ok(calls.includes('light'));assert.equal(f.$('zoom-in').disabled,false);
 });
+test('the opening action enters the first exhibit and hands focus to its tab',()=>{
+  const {f,ui,calls,controller}=boot();ui.attach(controller);
+  f.fire(f.$('story-start'),'click');
+  assert.ok(calls.some(value=>Array.isArray(value)&&value[0]==='go'&&value[1]===.13));
+  assert.equal(f.groups['[data-stop]'][1].focused,true);
+});
 test('exploring a structural part pauses the gallery and returns focus and view after closing',()=>{
   const {f,ui,calls,controller}=boot();ui.attach(controller);
   const opener=f.$('structure-action'),structure=f.$('structure-dialog'),figure=f.$('structure-figure');

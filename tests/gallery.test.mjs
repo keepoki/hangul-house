@@ -142,6 +142,16 @@ test('the route ends in a low frontal view of the pavilion distinct from the ope
   assert.deepEqual(reduced.position,sampleTour(1).position);
   assert.deepEqual(reduced.target,sampleTour(1).target);
 });
+test('the 3D story uses artwork captions only at its close-ups',()=>{
+  for(const [index,stop] of stops.entries())assert.equal(sampleTour(stop).story,index);
+  assert.equal(sampleTour(.18).story,null);
+  assert.equal(sampleTour(.325).story,null);
+  assert.equal(sampleTour(.18,{reducedMotion:true}).story,1);
+  sample(.18);
+  assert.equal(document.getElementById('story-title').innerHTML,'전시실 사이를 걷다.');
+  sample(stops[2]);
+  assert.match(document.getElementById('room-context').textContent,/물의 뜰/);
+});
 test('the route is continuous in both directions and respects reduced motion',()=>{
   let previous=sampleTour(0).position;
   for(let i=1;i<=2000;i++){

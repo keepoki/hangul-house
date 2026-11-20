@@ -19,7 +19,9 @@ test('image navigation shows the same water room and matching portrait asset',()
 test('the final stop selects a separate frontal still and retains the workshop entry',()=>{
   const {f,tour}=setup();
   assert.equal(f.$('gallery-image').src,'./assets/gallery/house.jpg');
+  assert.equal(f.$('story-start').hidden,false);
   tour.goTo(1);
+  assert.equal(f.$('story-start').hidden,true);
   assert.equal(f.$('gallery-image').src,'./assets/gallery/finale.jpg');
   assert.equal(f.$('gallery-image-mobile').srcset,'./assets/gallery/finale-mobile.jpg');
   assert.match(f.$('gallery-image').alt,/정면/);
