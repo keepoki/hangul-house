@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../dist/assets/three.module.js';
-import {createEnvironment,createReflectingPool} from '../dist/environment.js';
+import {createEnvironment,createReflectingPool,createNaturalRockGeometry} from '../dist/environment.js';
 import {createSurfacePixels} from '../dist/surface-textures.js';
 
 test('lightweight architecture uses color maps and only three close-detail normal maps',()=>{
@@ -57,9 +57,16 @@ test('premium maps finish their loader hydration with shared albedo, normal and 
   const done=env.hydrate({workerFactory:()=>worker={postMessage(data){this.tasks=data.tasks;},terminate(){this.terminated=true;}}});
   assert.ok(worker.tasks.every(t=>t.withNormal&&t.withRoughness));
   for(const task of worker.tasks)worker.onmessage({data:{id:task.id,...createSurfacePixels(task.kind,task.base,task.seed,task.n,task.withNormal,task.withRoughness)}});
-  await done;assert.equal(updates,8);assert.equal(original.image.width,256);assert.equal(clone.map,original);assert.equal(worker.terminated,true);
+  await done;assert.equal(updates,9);assert.equal(original.image.width,256);assert.equal(clone.map,original);assert.equal(worker.terminated,true);
   assert.ok(materials.every(m=>m.map.image.width===256&&m.normalMap.image.width===256&&m.roughnessMap.image.width===256));
   const tree=env.tree(new THREE.Group(),0,0,17);const leaves=tree.children.find(m=>m.userData.environmentDetail==='leaves');assert.equal(leaves.count,1550);assert.equal(leaves.geometry.index.count/3,28);
+});
+test('natural boulders are individually sculpted with welded normals and mineral color variation',()=>{
+  const a=createNaturalRockGeometry(THREE,101,8),b=createNaturalRockGeometry(THREE,108,8),positions=a.getAttribute('position'),normals=a.getAttribute('normal'),colors=a.getAttribute('color');
+  assert.ok(positions.count>4000);assert.notDeepEqual(positions.array,b.getAttribute('position').array);assert.ok(new Set(colors.array).size>100);
+  const seen=new Map();let duplicates=0;
+  for(let i=0;i<positions.count;i++){const key=[positions.getX(i),positions.getY(i),positions.getZ(i)].map(v=>Math.round(v*10000)).join(','),n=new THREE.Vector3().fromBufferAttribute(normals,i);assert.ok(Math.abs(n.length()-1)<.0001);if(seen.has(key)){duplicates++;assert.ok(n.distanceTo(seen.get(key))<.001);}else seen.set(key,n);}
+  assert.ok(duplicates>positions.count/2);assert.ok(a.boundingBox.max.y-a.boundingBox.min.y>1.1);
 });
 test('mobile water still ripples without a mirror target or a second scene render',()=>{
   const scene=new THREE.Scene(),group=new THREE.Group();scene.add(group);const camera=new THREE.PerspectiveCamera();
@@ -71,7 +78,7 @@ test('the reflection pass mirrors the real camera and restores render state',()=
   const scene=new THREE.Scene(),group=new THREE.Group();group.position.set(0,.2,8);scene.add(group);
   const camera=new THREE.PerspectiveCamera(35,1.3,.1,150);camera.position.set(3,4,18);camera.lookAt(0,2,8);camera.updateMatrixWorld(true);
   let current=null,rendered=null,reflectionVisible=true,pool,passes=0,fail=false;
-  const renderer={isWebGLRenderer:true,shadowMap:{autoUpdate:true},xr:{enabled:true},state:{buffers:{depth:{setMask(){}}}},getRenderTarget:()=>current,setRenderTarget:v=>current=v,clear(){},render(s,c){passes++;if(fail)throw new Error('Reflection target unavailable');rendered=c.position.clone();reflectionVisible=pool.visible;assert.ok(c.projectionMatrix.elements.every(Number.isFinite));}};
+  const renderer={isWebGLRenderer:true,shadowMap:{autoUpdate:true},xr:{enabled:true},state:{buffers:{depth:{setMask(){}}}},getRenderTarget:()=>current,setRenderTarget:v=>current=v,clear(){},render(s,c){passes++;if(fail)throw new Error('Reflection target unavailable');rendered=c.position.clone();reflectionVisible=pool.visible;assert.equal(current.width,512);assert.ok(c.projectionMatrix.elements.every(Number.isFinite));}};
   const result=createReflectingPool(THREE,group,scene,renderer,11,9,true);pool=result.pool;
   result.update(camera,1,false,false,1000);
   assert.ok(rendered);assert.ok(Math.abs(rendered.y-(2*(.2+.267)-4))<.001);

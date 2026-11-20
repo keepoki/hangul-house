@@ -14,6 +14,14 @@ export function createSurfacePixels(kind,base,seed,n,withNormal=true,withRoughne
       const grain=u+drift+knot*sin(v*19),waves=sin(grain*PI*75+.9*noise(u*8,v*3,seed));
       const pores=pow(noise(u*220,v*9,seed+5),5),band=sin(grain*PI*16);
       h=.5+waves*.06+pores*.07+fine*.025;shade=1+band*.065+waves*.035+pores*.14+(a-.5)*.12+fine*.035;roughness=.53+.13*a+.05*waves;
+    }else if(kind==='riverstone'){
+      // Mineral grains, weathered strata and recessed hairline fractures at different scales.
+      const sediment=fbm(u*13,v*13,seed+17),grit=fbm(u*76,v*76,seed+75),crystal=pow(noise(u*170,v*170,seed+113),5);
+      const strata=sin((u*4.2-v*2.3+fbm(u*7,v*7,seed+47)*1.45)*PI),fracture=pow(1-abs(strata),19);
+      const mineral=pow(noise(u*38,v*38,seed+119),4),pore=pow(noise(u*145,v*145,seed+9),8);
+      h=.52+(sediment-.5)*.28+(grit-.5)*.18-fracture*.16-pore*.22+crystal*.035;
+      shade=.91+(a-.5)*.34+(sediment-.5)*.29+(grit-.5)*.16-fracture*.16-pore*.30+mineral*.14+crystal*.10+fine*.035;
+      roughness=.69+(grit-.5)*.26+fracture*.16-mineral*.07;
     }else{
       const mote=fbm(u*31,v*31,seed+11),vein=pow(1-abs(sin((u*2.2+v*2.2+fbm(u*4,v*4,seed+9)*1.5)*PI)),14),pore=pow(noise(u*100,v*100,seed+22),9),strength=kind==='gravel'?1.7:kind==='basalt'?1.3:1;
       h=.5+(mote-.5)*.24*strength-pore*.28+fine*.075*strength;shade=1+(a-.5)*.23*strength+(mote-.5)*.15-pore*.4+fine*.07*strength+(kind==='limestone'?vein*.052:0);roughness=(kind==='floor'?.6:.76)+(.5-mote)*.2-pore*.07;
@@ -21,7 +29,7 @@ export function createSurfacePixels(kind,base,seed,n,withNormal=true,withRoughne
     if(heights)heights[i]=h;for(let c=0;c<3;c++){albedo[k+c]=clamp(base[c]*shade,0,255);if(rough)rough[k+c]=clamp(roughness*255,0,255);}albedo[k+3]=255;if(rough)rough[k+3]=255;
   }
   if(normal)for(let y=0;y<n;y++)for(let x=0;x<n;x++){
-    const k=4*(y*n+x),dx=(heights[y*n+(x+1)%n]-heights[y*n+(x+n-1)%n])*(kind==='gravel'?1.8:.95),dy=(heights[((y+1)%n)*n+x]-heights[((y+n-1)%n)*n+x])*(kind==='gravel'?1.8:.95),l=sqrt(1+dx*dx+dy*dy);
+    const k=4*(y*n+x),strength=kind==='riverstone'?2.5:kind==='gravel'?1.8:.95,dx=(heights[y*n+(x+1)%n]-heights[y*n+(x+n-1)%n])*strength,dy=(heights[((y+1)%n)*n+x]-heights[((y+n-1)%n)*n+x])*strength,l=sqrt(1+dx*dx+dy*dy);
     normal[k]=127.5*(1-dx/l);normal[k+1]=127.5*(1-dy/l);normal[k+2]=127.5*(1+1/l);normal[k+3]=255;
   }
   return {albedo,normal,rough,n};

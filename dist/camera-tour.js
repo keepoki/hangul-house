@@ -5,7 +5,10 @@ export const tourGlyphs = exhibitionSites.map(site=>site.char);
 const chapterStarts = [0, .07, .205, .335, .465, .60, .73, .90];
 function detail(time,index,side,distance=10.2) {
   const site=exhibitionSites[index],s=Math.sin(site.rot),c=Math.cos(site.rot);
-  return [time,[site.x+s*distance+c*side,site.center+1.3,site.z+c*distance-s*side],[site.x,site.center,site.z],32,1];
+  // The water gallery has a slightly higher and wider view so the mirrored surface and rock
+  // islands are visible together with the complete bronze ring, rather than cropping the pool.
+  const water=site.theme==='water',d=distance*(water?1.1:1);
+  return [time,[site.x+s*d+c*side,site.center+(water?2.85:1.3),site.z+c*d-s*side],[site.x,site.center-(water?1.30:0),site.z],water?38:32,1];
 }
 const poses = [
   [0,    [-19,13.5,29], [0,2.8,0], 36,0],

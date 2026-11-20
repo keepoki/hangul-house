@@ -61,7 +61,7 @@ test('all six independent installations have a complete, centered close-up',()=>
     assert.ok(close.height>.9,`${tourGlyphs[i]} must occupy at least 45% of the image height`);
     assert.ok(close.points.every(v=>Math.abs(v.x)<1&&Math.abs(v.y)<1&&v.z>-1&&v.z<1),`${tourGlyphs[i]} must fit the close-up frame`);
     const center=new Three.Box3().setFromObject(object).getCenter(new Three.Vector3()).project(renderedCamera);
-    assert.ok(Math.abs(center.x)<.12&&Math.abs(center.y)<.12,`${tourGlyphs[i]} must remain centered`);
+    assert.ok(Math.abs(center.x)<.12&&(i===1?center.y>.10&&center.y<.50:Math.abs(center.y)<.12),`${tourGlyphs[i]} must remain compositionally framed`);
     const selected=renderedScene.children.find(o=>o.isSpotLight&&o.userData.artGlyph===tourGlyphs[i]);
     assert.ok(selected.intensity>selected.userData.base,'The selected work should receive the strongest accent');
   }
@@ -186,6 +186,18 @@ test('the first gallery transition activates only the stone room, with no sudden
   sample(.13);assert.deepEqual(visible().zones,['stone']);sample(.20);assert.deepEqual(visible().zones,['stone','water']);sample(.26);assert.deepEqual(visible().zones,['water']);
   for(let p=.04;p<.95;p+=.005){sample(p);assert.ok(visible().zones.length<=2);}
 });
+test('water court includes distinct high-detail rock islands, a mirror pool and visible stepping stones',()=>{
+  sample(stops[2]);let zone;renderedScene.traverseVisible(o=>{if(o.userData.exhibitionTheme==='water')zone=o;});assert.ok(zone);
+  const rocks=zone.children.filter(o=>o.userData.environmentDetail==='natural-stone');assert.equal(rocks.length,14);assert.equal(new Set(rocks.map(o=>o.geometry.uuid)).size,14);
+  assert.ok(rocks.every(o=>o.material.vertexColors&&o.material.normalMap&&o.material.roughnessMap));
+  const major=rocks.filter(o=>o.geometry.getAttribute('position').count>4000);assert.ok(major.length>=4);
+  const camera=renderedCamera,points=major.map(o=>o.getWorldPosition(new Three.Vector3()).project(camera));assert.ok(points.some(p=>p.x<-.15&&p.x>-1.1&&p.y>-1.1));assert.ok(points.some(p=>p.x>.15&&p.x<1.1&&p.y>-1.1));
+  const pool=zone.children.find(o=>o.userData.environmentDetail==='reflecting-pool');assert.ok(pool);const poolCenter=pool.getWorldPosition(new Three.Vector3()),center=poolCenter.clone().project(camera);assert.ok(center.y>-1&&center.y<0);
+  const ringCenter=new Three.Box3().setFromObject(artwork(tourGlyphs[1])).getCenter(new Three.Vector3());ringCenter.y=2*poolCenter.y-ringCenter.y;const mirrorCenter=ringCenter.clone().project(camera);
+  assert.ok(mirrorCenter.y>-1&&mirrorCenter.y<-.25,'The reflected ring must be visible in the bottom half of the camera frame');
+  const ray=new Three.Raycaster(camera.position,ringCenter.sub(camera.position).normalize()),visible=[];renderedScene.traverseVisible(o=>{if(o.isMesh&&o.material.opacity>.9)visible.push(o);});
+  assert.equal(ray.intersectObjects(visible,false)[0]?.object,pool,'The stepping path must not obscure the central reflection');
+});
 test('premium PBR materials and environment are restored with a fixed number of visible shadow lights',()=>{
   for(const p of stops){sample(p);let shadows=0,pbr=0,spots=0;renderedScene.traverseVisible(o=>{if(o.isLight){if(o.castShadow){shadows++;assert.equal(o.shadow.autoUpdate,false);}if(o.isSpotLight)spots++;}if(o.isMesh&&(o.material.isMeshStandardMaterial||o.material.isMeshPhysicalMaterial))pbr++;});
     assert.equal(spots,2);assert.equal(shadows,3);assert.ok(pbr>15);assert.ok(renderedScene.environment.isCubeTexture);
@@ -201,7 +213,7 @@ test('the loader compiles shader families in paced batches before its first rend
     getRenderTarget(){return this.target;}setRenderTarget(target){this.target=target;}clear(){}
     async compileAsync(object,camera,scene){assert.ok(object.isMesh||object.isPoints);assert.ok(scene.isScene);events.push('compile');}
     render(s,c){if(this.shadowMap.needsUpdate){s.traverseVisible(o=>{if(o.isLight&&o.castShadow&&o.shadow.needsUpdate){shadowBuilds.push(o.userData.artGlyph??'pavilion');o.shadow.needsUpdate=false;}});this.shadowMap.needsUpdate=false;}
-      if(this.target){events.push('reflection');assert.equal(this.target.width,512);}
+      if(this.target){events.push('reflection');assert.equal(this.target.width,1024);}
       else if(this.scissorTest){events.push('warm');const zones=[];s.traverseVisible(o=>{if(o.userData.exhibitionTheme)zones.push(o.userData.exhibitionTheme);});warmFrames.push(zones);assert.equal(this.viewport.z,96);assert.equal(element('tour-progress').textContent,'0%');}else{events.push('render');assert.equal(this.viewport.z,1200);}super.render(s,c);}
   }
   document.documentElement.dataset.view='loading';document.documentElement.dataset.state='loading';

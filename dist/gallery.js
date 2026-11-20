@@ -87,6 +87,12 @@ function mesh(geometry,mat,x=0,y=0,z=0,parent=house) {
   const m=new THREE.Mesh(geometry,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
 }
 function box(w,h,d,mat,x,y,z,parent=house) {return mesh(new THREE.BoxGeometry(w,h,d),mat,x,y,z,parent);}
+function stoneSlab(w,d,h,mat,x,y,z,parent){
+  const s=new THREE.Shape(),a=w/2,b=d/2,r=.09;
+  s.moveTo(-a+r,-b);s.lineTo(a-r,-b);s.quadraticCurveTo(a,-b,a,-b+r);s.lineTo(a,b-r);s.quadraticCurveTo(a,b,a-r,b);s.lineTo(-a+r,b);s.quadraticCurveTo(-a,b,-a,b-r);s.lineTo(-a,-b+r);s.quadraticCurveTo(-a,-b,-a+r,-b);
+  const geo=new THREE.ExtrudeGeometry(s,{depth:h,bevelEnabled:true,bevelSize:.026,bevelThickness:.018,bevelSegments:2,curveSegments:5,steps:1});geo.translate(0,0,-h/2);geo.rotateX(-Math.PI/2);
+  return mesh(geo,mat,x,y,z,parent);
+}
 function beam(a,b,r,mat,parent=house) {
   const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b),delta=to.clone().sub(from);
   const m=mesh(new THREE.CylinderGeometry(r,r,delta.length(),8),mat,0,0,0,parent);
@@ -150,7 +156,7 @@ function setup(onProgress) {
   scene.fog.density=.009;
   // Generate the premium texture maps off the main thread, while the loader is still active.
   // The map upgrades are awaited before any scene render, including warm-up.
-  let loadedMaps=0;environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761,premium:true,progressive:renderer.isWebGLRenderer&&typeof window!=='undefined',onSurfaceReady:()=>onProgress(34+Math.round(++loadedMaps/8*18),'materials')});
+  let loadedMaps=0;environmentDetail=createEnvironment(THREE,{mobile:innerWidth<761,premium:true,progressive:renderer.isWebGLRenderer&&typeof window!=='undefined',onSurfaceReady:()=>onProgress(34+Math.round(++loadedMaps/Object.keys(environmentDetail.materials).length*18),'materials')});
   const {limestone,dark,floor,timber,hall,gravel,soil}=environmentDetail.materials;
   const blackMetal=material('#343632',.4,.45);
   const bronze=material('#c59c5e',.3,.68);
@@ -207,14 +213,25 @@ function setup(onProgress) {
       box(4,.35,.85,limestone,3.1,.4,3.2,zone);
     }
     if(site.theme==='water'){
+      // A dark stone water court, with a softly lit wall for legible, architectural reflections.
+      const waterWall=limestone.clone();waterWall.color.set('#b5b1a1');waterWall.roughness=.93;
+      const recessLight=new THREE.MeshBasicMaterial({color:'#c7b78f',toneMapped:false});
       box(11.1,.14,9.8,dark,0,.17,0,zone);
       reflectingPool=createReflectingPool(THREE,zone,scene,renderer,11.1,9.8,innerWidth<761,true);
-      for(const x of [-5.7,5.7])box(.35,.32,10.4,dark,x,.16,0,zone);
-      for(const z of [-5.05,5.05])box(11.7,.32,.35,dark,0,.16,z,zone);
-      for(const x of [-5.4,5.4])box(.025,.02,9.8,strip,x,.29,0,zone);
-      environmentDetail.rock(zone,-4,-3.45,.8,101,.27);environmentDetail.rock(zone,4.1,-3.6,.65,102,.27);
-      environmentDetail.rock(zone,-4.2,-2.5,.32,103,.27);environmentDetail.rock(zone,3.35,-3.7,.26,104,.27);
-      for(let z=2.05;z<5;z+=1.05)box(2.8,.10,.81,limestone,0,.32,z,zone);
+      for(const x of [-5.7,5.7]){box(.35,.35,10.4,dark,x,.16,0,zone);stoneSlab(.42,10.35,.075,limestone,x,.355,0,zone);}
+      for(const z of [-5.05,5.05]){box(11.7,.35,.35,dark,0,.16,z,zone);stoneSlab(11.7,.42,.075,limestone,0,.355,z,zone);}
+      box(10.8,5.3,.34,waterWall,0,2.85,-4.77,zone);box(10.95,.20,.62,dark,0,5.54,-4.77,zone);
+      for(const y of [1.6,3.2,4.7])box(10.72,.018,.025,joint,0,y,-4.585,zone);
+      for(const x of [-3.65,3.65]){box(.19,4.75,.12,dark,x,2.72,-4.57,zone);box(.036,4.42,.03,recessLight,x,2.73,-4.48,zone);}
+      box(10.6,.038,.065,recessLight,0,.41,-4.52,zone);
+      for(const x of [-5.41,5.41])box(.022,.018,9.72,recessLight,x,.30,0,zone);
+      // Asymmetric islands of wet, weathered river stones. Each boulder has a unique sculpted
+      // silhouette and fine mineral texture, and the lower portion sits under the water line.
+      const stones=[[-4.10,-1.65,1.19,101,'boulder'],[-4.05,1.56,.92,102,'boulder'],[-4.73,-.22,.48,103,'low'],[-3.72,-3.47,.60,104,'low'],[-4.79,2.60,.34,105,'low'],[-3.33,.26,.26,106,'low'],[-4.66,-3.62,.24,107,'low'],[4.14,-2.0,1.13,108,'upright'],[3.98,1.67,.97,109,'boulder'],[4.71,-.06,.49,110,'low'],[3.58,-3.39,.54,111,'low'],[4.57,2.88,.32,112,'low'],[3.33,.49,.27,113,'low'],[4.82,-3.44,.22,114,'low']];
+      for(const [x,z,size,seed,shape] of stones)environmentDetail.rock(zone,x,z,size,seed,.267,shape);
+      // Keep the central water uninterrupted for the complete reflected ring; the approach
+      // follows a diagonal run of smaller stepping stones along the left side of the pool.
+      for(const [x,z] of [[-1.92,2.87],[-2.35,3.80],[-2.78,4.75]])stoneSlab(1.62,.80,.105,limestone,x,.329,z,zone);
     }
     if(site.theme==='wood'){
       environmentDetail.timberDeck(zone,timber);
@@ -246,10 +263,14 @@ function setup(onProgress) {
     }
     // Each letter occupies its own site and is scaled as a full-size installation.
     const plinthHeight=site.base-.2;
-    box(site.char==='ㅇ'?5.5:4.8,plinthHeight,3.2,dark,site.x,.2+plinthHeight/2,site.z);
+    if(site.theme==='water'){
+      mesh(new THREE.CylinderGeometry(2.52,2.60,plinthHeight,80),dark,site.x,.2+plinthHeight/2,site.z);
+      mesh(new THREE.CylinderGeometry(2.53,2.53,.034,80),bronze,site.x,site.base-.036,site.z);
+      mesh(new THREE.CylinderGeometry(2.49,2.49,.025,80),limestone,site.x,site.base-.009,site.z);
+    }else box(4.8,plinthHeight,3.2,dark,site.x,.2+plinthHeight/2,site.z);
     glyph(site.char,displayMaterials[site.char],site.x,site.z,site.scale,site.rot,site.base);
     const front=new THREE.Vector3(Math.sin(site.rot),0,Math.cos(site.rot));
-    const sign=plaque(site.char,site.x+front.x*1.62,site.z+front.z*1.62);sign.position.y=site.base-.14;sign.rotation.y=site.rot;
+    const signOffset=site.theme==='water'?2.59:1.62,sign=plaque(site.char,site.x+front.x*signOffset,site.z+front.z*signOffset);sign.position.y=site.base-.14;sign.rotation.y=site.rot;
     const target=new THREE.Vector3(site.x,site.center,site.z),position=new THREE.Vector3(site.x+front.x*2-Math.cos(site.rot)*1.2,9.5,site.z+front.z*2+Math.sin(site.rot)*1.2);
     const spot=new THREE.SpotLight(site.theme==='water'?'#e0e6d4':'#ffdfb5',0,24,.55,.7,1.8);spot.position.copy(position);spot.target.position.copy(target);spot.userData.artGlyph=site.char;spot.userData.base=620;spot.castShadow=true;spot.visible=false;
     spot.shadow.mapSize.set(innerWidth<761?512:1024,innerWidth<761?512:1024);spot.shadow.bias=-.0003;spot.shadow.normalBias=.06;spot.shadow.camera.near=.3;spot.shadow.camera.far=26;spot.shadow.autoUpdate=false;spot.shadow.needsUpdate=false;
@@ -410,7 +431,7 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
     if(dust) dust.rotation.y=progress*.12;
     if(!prepareOnly){
       const settled=Math.abs(progress-desired)<.0004&&Math.abs(zoom-desiredZoom)<.0004;
-      if(reflectingPool&&(!warmOnly||(pose.chapter===2&&renderer.getRenderTarget)))reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter===2&&settled);
+      if(reflectingPool&&(!warmOnly||(pose.chapter===2&&renderer.getRenderTarget)))reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter===2,!settled);
       try{renderer.render(scene,camera);}catch(error){if(force)throw error;failRendering(error);return;}
     }
   }
