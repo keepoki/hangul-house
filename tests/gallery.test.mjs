@@ -5,7 +5,7 @@ import * as Three from '../dist/assets/three.module.js';
 import { sampleTour, fitTourPose, chapterAt, tourStops as stops, tourGlyphs } from '../dist/camera-tour.js';
 import { exhibitionSites } from '../dist/exhibition-layout.js';
 import { buildHangulBuilding } from '../dist/hangul-building.js';
-import { chapters } from '../dist/exhibition-content.js';
+import { chapters, updateTourNavigation } from '../dist/exhibition-content.js';
 import { createEnvironment, createReflectingPool } from '../dist/environment.js';
 import { batchStaticBoxes, detailCount, pickVisibleArtwork } from '../dist/scene-quality.js';
 import { createPerformanceGovernor } from '../dist/adaptive-quality.js';
@@ -29,8 +29,8 @@ class Renderer {
 }
 const THREE={...Three,WebGLRenderer:Renderer},errors=[];
 const media={matches:false,addEventListener(){}};
-const boot=new Function('THREE','sampleTour','fitTourPose','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','batchStaticBoxes','detailCount','pickVisibleArtwork','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console','createPerformanceGovernor','initOptions',source+'\nreturn (async()=>{const controls=await initGallery(initOptions);return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls,reinitialize:()=>initGallery(initOptions),inspect:()=>({width:renderer.width,height:renderer.height,aspect:camera.aspect})};})()');
-const app=await boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,3500,v=>lastScroll=v,(type,fn)=>handlers.set('window:'+type,fn),()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))},createPerformanceGovernor);
+const boot=new Function('THREE','sampleTour','fitTourPose','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','batchStaticBoxes','detailCount','pickVisibleArtwork','chapters','updateTourNavigation','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console','createPerformanceGovernor','initOptions',source+'\nreturn (async()=>{const controls=await initGallery(initOptions);return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls,reinitialize:()=>initGallery(initOptions),inspect:()=>({width:renderer.width,height:renderer.height,aspect:camera.aspect})};})()');
+const app=await boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,updateTourNavigation,document,()=>media,1440,900,1,3500,v=>lastScroll=v,(type,fn)=>handlers.set('window:'+type,fn),()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))},createPerformanceGovernor);
 function sample(p){clock+=17;return app.sample(p,clock);}
 function settle(){for(let i=0;i<100;i++){clock+=17;app.tick(clock);}}
 function artwork(char){let found;renderedScene.traverse(o=>{if(o.userData.artGlyph===char&&o.isGroup)found=o;});return found;}
@@ -228,7 +228,7 @@ test('hidden shader preparation preserves image captions while compiling and war
   }
   document.documentElement.dataset.view='loading';document.documentElement.dataset.state='loading';
   try{
-    const run=await boot({...Three,WebGLRenderer:ShaderRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,0,()=>{},()=>{},callback=>{setTimeout(()=>{if(active){events.push('yield');callback(performance.now());}},0);return 1;},class{observe(){}},{now:()=>0},{reload(){}},console,createPerformanceGovernor,{onProgress:(n,phase)=>steps.push([n,phase])});
+    const run=await boot({...Three,WebGLRenderer:ShaderRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,updateTourNavigation,document,()=>media,1440,900,1,0,()=>{},()=>{},callback=>{setTimeout(()=>{if(active){events.push('yield');callback(performance.now());}},0);return 1;},class{observe(){}},{now:()=>0},{reload(){}},console,createPerformanceGovernor,{onProgress:(n,phase)=>steps.push([n,phase])});
     assert.ok(run.controls);assert.equal(events.at(-1),'render');assert.equal(events.filter(e=>e==='render').length,1);
     assert.ok(events.filter(e=>e==='compile').length>=5);assert.ok(events.filter(e=>e==='yield').length>=9);assert.deepEqual(steps[0],[22,'scene']);assert.deepEqual(steps.at(-1),[100,'ready']);assert.ok(steps.some(([n,phase])=>phase==='frame'&&n===96));
     assert.equal(warmFrames.length,6);assert.deepEqual(warmFrames.map(z=>z[0]),exhibitionSites.map(site=>site.theme));assert.ok(warmFrames.every(z=>z.length===1));assert.equal(element('tour-progress').textContent,'26%');assert.equal(element('story-title').innerHTML,'WATER IMAGE');assert.equal(element('view-label').textContent,'WATER IMAGE');
@@ -245,6 +245,6 @@ test('retrying a disposed gallery rebuilds a correctly sized and illuminated exh
 
 test('a failed first render disposes the partially created graphics resources',async()=>{
   let disposed=0;class FailedRenderer extends Renderer{render(){throw new Error('GPU upload failed');}dispose(){disposed++;}}
-  await assert.rejects(boot({...Three,WebGLRenderer:FailedRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,0,()=>{},()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},console,createPerformanceGovernor),/GPU upload failed/);
+  await assert.rejects(boot({...Three,WebGLRenderer:FailedRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,updateTourNavigation,document,()=>media,1440,900,1,0,()=>{},()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},console,createPerformanceGovernor),/GPU upload failed/);
   assert.equal(disposed,1);
 });

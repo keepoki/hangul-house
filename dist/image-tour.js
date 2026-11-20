@@ -1,4 +1,4 @@
-import {chapters} from './exhibition-content.js';
+import {chapters,updateTourNavigation} from './exhibition-content.js';
 import {chapterAt,tourStops} from './camera-tour.js';
 
 export const galleryStills=['house','stone','water','wood','light','garden','quiet','finale'];
@@ -16,18 +16,29 @@ const stillDescriptions=[
 export function createImageTour({document=globalThis.document,window=globalThis.window}={}){
   const $=id=>document.getElementById(id),root=document.documentElement,img=$('gallery-image'),source=$('gallery-image-mobile'),picture=$('gallery-picture');
   let active=false,progress=0,chapter=-1,zoom=1,bright=false;
+  const status=$('image-status'),retry=$('retry-image');
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
   const trackHeight=()=>Math.max(1,(root.scrollHeight||window.innerHeight)-window.innerHeight);
-  function imageLoaded(){if(active){$('image-status').textContent='';$('retry-image').hidden=true;}}
+  function imageLoading(){status.textContent='전시 이미지를 불러오는 중입니다.';retry.hidden=true;}
+  function imageLoaded(){if(active){status.textContent='';retry.hidden=true;}}
   img.addEventListener('load',imageLoaded);
-  function imageFailed(){if(active){$('image-status').textContent='이미지를 불러오지 못했습니다. 다시 불러오거나 전시 설명을 읽어보세요.';$('retry-image').hidden=false;}}
+  function imageFailed(){if(active){status.textContent='이미지를 불러오지 못했습니다. 다시 불러오거나 전시 설명을 읽어보세요.';retry.hidden=false;}}
   img.addEventListener('error',imageFailed);
-  $('retry-image').addEventListener('click',()=>{const url=new URL(img.src,document.baseURI);url.searchParams.set('retry',Date.now());source.srcset='';img.src=url.href;$('retry-image').hidden=true;});
+  retry.addEventListener('click',()=>{
+    const portrait=window.matchMedia(source.media).matches;
+    const element=portrait?source:img,attribute=portrait?'srcset':'src';
+    const url=new URL(element[attribute],document.baseURI);
+    const attempt=String(Date.now());
+    if(url.protocol==='data:')url.hash=attempt;
+    else url.searchParams.set('retry',attempt);
+    imageLoading();
+    element[attribute]=url.href;
+  });
   function paint(){
     if(!active)return;
     const index=chapterAt(progress);if(index===chapter)return;chapter=index;
     const data=chapters[index],file=galleryStills[index];
-    $('image-status').textContent='전시 이미지를 불러오는 중입니다.';$('retry-image').hidden=true;
+    imageLoading();
     source.srcset=`./assets/gallery/${file}-mobile.jpg`;img.src=`./assets/gallery/${file}.jpg`;img.alt=stillDescriptions[index];
     if(img.complete&&img.naturalWidth)imageLoaded();
     else if(img.complete&&img.currentSrc)imageFailed();
@@ -36,12 +47,13 @@ export function createImageTour({document=globalThis.document,window=globalThis.
     $('experience').classList.toggle('is-detail',index>0&&index<7);$('story-action').hidden=index!==7;
     $('structure-action').hidden=index!==0;
     $('view-label').textContent=data.context;$('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
-    document.querySelectorAll('[data-stop]').forEach((button,i)=>{button.classList.toggle('active',i===index);if(i===index)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
+    updateTourNavigation(document,index);
   }
   function update(){if(!active||root.dataset.view!=='images')return;progress=clamp(window.scrollY/trackHeight(),0,1);$('tour-progress').textContent=Math.round(progress*100)+'%';paint();}
   function setZoom(value){zoom=clamp(value,.75,1.8);img.style.transform=`scale(${zoom})`;$('zoom-value').textContent=Math.round(zoom*100)+'%';$('zoom-in').disabled=zoom>=1.8;$('zoom-out').disabled=zoom<=.75;}
-  function seek(value){progress=clamp(value,0,1);chapter=-1;window.scrollTo({top:progress*trackHeight(),behavior:'instant'});paint();$('tour-progress').textContent=Math.round(progress*100)+'%';}
-  window.addEventListener('scroll',update,{passive:true});window.addEventListener('resize',()=>{if(active)seek(progress);},{passive:true});
+  function seek(value){progress=clamp(value,0,1);window.scrollTo({top:progress*trackHeight(),behavior:'instant'});paint();$('tour-progress').textContent=Math.round(progress*100)+'%';}
+  window.addEventListener('scroll',update,{passive:true});
+  window.addEventListener('resize',()=>{if(active){seek(progress);updateTourNavigation(document,chapter);}},{passive:true});
   return {
     prepare:()=>img.decode(),
     getProgress:()=>progress,seek,

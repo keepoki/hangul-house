@@ -29,8 +29,8 @@ document.addEventListener('click',event=>{
 <title>글자의 집 — 한글의 선으로 공간을 짓다</title>
 <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./style.css">
-<link rel="preload" href="./assets/gallery/house.jpg" as="image" media="(min-width: 760px)">
-<link rel="preload" href="./assets/gallery/house-mobile.jpg" as="image" media="(max-width: 759px)">
+<link rel="preload" href="./assets/gallery/house.jpg" as="image" media="(min-width: 760px), (orientation: landscape)">
+<link rel="preload" href="./assets/gallery/house-mobile.jpg" as="image" media="(max-width: 759px) and (orientation: portrait)">
 <link rel="preload" href="./assets/gowun-batang.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body id="home">
@@ -73,7 +73,7 @@ document.addEventListener('click',event=>{
 </header>
 <div class="scene-wrap">
 <img class="scene-poster" id="scene-poster" src="./assets/house-plan.svg" alt="ㄱ 기둥과 처마, ㅅ 지붕, ㅁ 입구, ㅇ 창으로 구성한 한글 집의 정면도." width="800" height="500">
-<picture class="gallery-still" id="gallery-picture"><source id="gallery-image-mobile" media="(max-width: 759px)" srcset="./assets/gallery/house-mobile.jpg"><img id="gallery-image" src="./assets/gallery/house.jpg" alt="한글의 선으로 지은 건축관의 고화질 전시 이미지." width="1920" height="1080" fetchpriority="high" decoding="async"></picture>
+<picture class="gallery-still" id="gallery-picture"><source id="gallery-image-mobile" media="(max-width: 759px) and (orientation: portrait)" srcset="./assets/gallery/house-mobile.jpg"><img id="gallery-image" src="./assets/gallery/house.jpg" alt="한글의 선으로 지은 건축관의 고화질 전시 이미지." width="1920" height="1080" fetchpriority="high" decoding="async"></picture>
 <div id="stage" role="img" aria-label="넓은 전시관 중앙의 한글 건축물과, 돌·물·나무·빛·정원·자갈을 주제로 독립 배치된 여섯 한글 조형물."></div>
 <p class="load-status" id="load-status" role="status">3D 전시를 준비하고 있습니다.</p>
 <div class="image-feedback"><p id="viewing-announcement" role="status" aria-live="polite"></p><p id="image-status" role="status" aria-live="polite"></p><button id="retry-image" type="button" hidden>이미지 다시 불러오기</button></div>

@@ -8,3 +8,18 @@ export const chapters = [
   {context:'고요의 방 · 도자기',title:'두 선이 만나<br>지붕이 되다.',body:'서로 기대는 ㅅ의 두 선.<br>기울어진 획 아래에 사람이 머물 자리가 생깁니다.',note:'지붕과 글자가 공유하는 형태를 발견해보세요.',glyph:'ㅅ',name:'서로를 향한 선',material:'아이보리 도자기와 자갈'},
   {context:'한글 작업실',title:'이제,<br> 당신의 집.',body:'입구가 된 ㅁ, 지붕이 된 ㅅ, 창이 된 ㅇ.<br> 세 조각을 직접 옮겨 집 한 채를 지어보세요.',note:'나무·돌·황동의 가상 무게와 충돌을 체험합니다.',glyph:'ㅁ',name:'당신이 만드는 집',material:'한글 조각으로 짓는 작은 건축'}
 ];
+
+export function updateTourNavigation(document,index){
+  for(const button of document.querySelectorAll('[data-stop]')){
+    const active=Number(button.dataset.stop)===index;
+    button.classList.toggle('active',active);
+    if(!active){button.removeAttribute('aria-current');continue;}
+    button.setAttribute('aria-current','step');
+    const nav=button.parentElement;
+    if(!nav||nav.scrollWidth<=nav.clientWidth)continue;
+    const viewportLeft=nav.getBoundingClientRect().left+nav.clientLeft;
+    const viewportRight=viewportLeft+nav.clientWidth;
+    const {left,right}=button.getBoundingClientRect();
+    if(left<viewportLeft||right>viewportRight)nav.scrollLeft+=(left+right-viewportLeft-viewportRight)/2;
+  }
+}

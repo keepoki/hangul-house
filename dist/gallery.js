@@ -8,7 +8,7 @@ import { createPerformanceGovernor } from './adaptive-quality.js';
 
 const $ = (id) => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
-import { chapters } from './exhibition-content.js';
+import { chapters, updateTourNavigation } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
 let scene, camera, renderer, house, dust;
 let stageWidth=0,stageHeight=0,stagePixelRatio=0;
@@ -78,10 +78,7 @@ function updateChapter(){
   $('work-material').textContent=data.material;
   $('story-action').hidden=index!==7;
   $('structure-action').hidden=index!==0;
-  document.querySelectorAll('[data-stop]').forEach((button,i)=>{
-    button.classList.toggle('active',i===index);
-    if(i===index){button.setAttribute('aria-current','step');const nav=button.parentElement;if(nav?.scrollWidth>nav.clientWidth){const left=button.offsetLeft-nav.offsetLeft; if(left<nav.scrollLeft||left+button.offsetWidth>nav.scrollLeft+nav.clientWidth)nav.scrollLeft=left-(nav.clientWidth-button.offsetWidth)/2;}}else button.removeAttribute('aria-current');
-  });
+  updateTourNavigation(document,index);
   $('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
 }
 
