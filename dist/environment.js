@@ -181,7 +181,7 @@ export function createReflectingPool(THREE, parent, scene, renderer, width=11.1,
     #include <colorspace_fragment>
     }` }):fallback;
   const pool=new THREE.Mesh(geometry,material);pool.rotation.x=-Math.PI/2;pool.position.set(0,.267,0);pool.name='Reflecting pool';pool.userData.environmentDetail='reflecting-pool';pool.receiveShadow=false;pool.castShadow=false;parent.add(pool);
-  let last=-Infinity,lastBright,lastAspect,lastFov;const previousPosition=new THREE.Vector3(),previousQuaternion=new THREE.Quaternion(),position=new THREE.Vector3(),look=new THREE.Vector3(),up=new THREE.Vector3(),clip=new THREE.Vector4(),q=new THREE.Vector4(),bias=new THREE.Matrix4().set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1);
+  let last=-Infinity,lastBright,lastAspect,lastFov,reflectionInterval=mobile?155:94;const previousPosition=new THREE.Vector3(),previousQuaternion=new THREE.Quaternion(),position=new THREE.Vector3(),look=new THREE.Vector3(),up=new THREE.Vector3(),clip=new THREE.Vector4(),q=new THREE.Vector4(),bias=new THREE.Matrix4().set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1);
   function update(camera,seconds,bright,reduce,now,nearby=true,moving=false){
     if(!animated||!pool.visible||!parent.visible)return;
     const activeMaterial=pool.material;activeMaterial.uniforms.time.value=reduce?0:seconds;activeMaterial.uniforms.alpha.value=activeMaterial.opacity;activeMaterial.uniforms.light.value=bright?1.4:1;
@@ -189,7 +189,7 @@ export function createReflectingPool(THREE, parent, scene, renderer, width=11.1,
     // Keep the last valid image outside the water room; refresh at a capped rate during the tour.
     if(!nearby)return;
     if(activeMaterial.uniforms.ready.value===1&&lastBright===bright&&lastAspect===camera.aspect&&lastFov===camera.fov&&previousPosition.distanceToSquared(camera.position)<.000025&&Math.abs(previousQuaternion.dot(camera.quaternion))>.999999)return;
-    if(now-last<(moving?(mobile?155:94):80)&&!reduce)return;last=now;
+    if(now-last<(moving?reflectionInterval:80)&&!reduce)return;last=now;
     pool.getWorldPosition(position);const y=position.y;
     if(camera.position.y<=y+.02)return;
     camera.getWorldDirection(look);look.add(camera.position);
@@ -207,5 +207,8 @@ export function createReflectingPool(THREE, parent, scene, renderer, width=11.1,
     previousPosition.copy(camera.position);previousQuaternion.copy(camera.quaternion);lastBright=bright;lastAspect=camera.aspect;lastFov=camera.fov;
     activeMaterial.uniforms.ready.value=1;
   }
-  return{pool,update,animated,get capable(){return capable;}};
+  return{pool,update,animated,get capable(){return capable;},
+    setQuality(profile){const size=Math.min(resolution,profile.reflectionSize);if(target&&target.width!==size){target.setSize(size,size);material.uniforms.ready.value=0;}reflectionInterval=Math.max(mobile?155:94,profile.reflectionInterval);},
+    dispose(){target?.dispose();}
+  };
 }

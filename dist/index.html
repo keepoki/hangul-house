@@ -7,22 +7,22 @@
 // Set this before the browser restores the previous scroll position on a reload.
 if('scrollRestoration' in history)history.scrollRestoration='manual';
 if(location.hash&&performance.getEntriesByType?.('navigation')[0]?.type==='reload')history.replaceState(history.state,'',location.pathname+location.search);
-document.documentElement.dataset.view='loading';
+document.documentElement.dataset.view='images';
+document.documentElement.dataset.state='ready';
 </script>
 <meta name="theme-color" content="#11120f">
 <meta name="description" content="한글의 선이 기둥과 지붕이 되는 디지털 전시. 여섯 공간을 둘러보고, 중력과 충돌이 있는 한글 작업실에서 나만의 집을 지어보세요.">
 <title>글자의 집 — 한글의 선으로 공간을 짓다</title>
 <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./style.css">
-<link rel="modulepreload" href="./assets/three.module.js">
-<link rel="modulepreload" href="./gallery.js">
+<link rel="preload" href="./assets/gallery/house.jpg" as="image" media="(min-width: 760px)">
+<link rel="preload" href="./assets/gallery/house-mobile.jpg" as="image" media="(max-width: 759px)">
 <link rel="preload" href="./assets/gowun-batang.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body id="home">
 <section id="loading-screen" class="loading-screen" aria-labelledby="loading-title">
   <div class="loading-panel">
     <div class="loading-emblem" aria-hidden="true"><span>ㄱ</span><span>ㅅ</span><span>ㅁ</span><span>ㅇ</span></div>
-    <p class="loading-eyebrow">A HOUSE OF HANGUL</p>
     <h1 id="loading-title">글자의 집</h1>
     <p id="loading-phase" role="status" aria-live="polite">전시관의 문을 열고 있습니다.</p>
     <progress id="loading-progress" max="100" value="8" aria-label="전시 준비 진행률"></progress>
@@ -36,6 +36,12 @@ document.documentElement.dataset.view='loading';
 <nav class="header-nav" aria-label="주 메뉴">
 <button class="desktop-link" type="button" data-goto="0">공간 보기</button>
 <button class="desktop-link" type="button" data-goto="0.13">작품 보기</button>
+<details class="viewing-menu" id="viewing-menu"><summary>관람 방식 <span id="viewing-current">이미지</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+<div class="viewing-options"><fieldset><legend>관람 방식 선택</legend>
+<label><input type="radio" name="viewing-mode" value="auto" checked><span>자동<small>기기 성능에 맞춰 편안하게</small></span></label>
+<label><input type="radio" name="viewing-mode" value="3d"><span>3D<small>카메라를 움직이며 공간 관람</small></span></label>
+<label><input type="radio" name="viewing-mode" value="images"><span>이미지<small>고화질 장면으로 가볍게 관람</small></span></label>
+</fieldset><p id="viewing-status" role="status" aria-live="polite">이미지로 먼저 관람할 수 있습니다.</p><button class="text-link" type="button" data-viewing-choice="3d">3D 다시 준비하기</button><p class="viewing-note">선택한 방식은 이 브라우저에 저장됩니다.</p></div></details>
 <details class="help-menu" id="help-menu"><summary>관람 안내</summary><div class="help-content">
 <h2>천천히, 가까이.</h2>
 <p>스크롤하면 전시 구역 사이를 이동하고, 각 글자의 눈높이까지 다가갑니다. 위로 스크롤하면 되짚어 볼 수 있어요.</p>
@@ -50,8 +56,10 @@ document.documentElement.dataset.view='loading';
 </header>
 <div class="scene-wrap">
 <img class="scene-poster" id="scene-poster" src="./assets/house-plan.svg" alt="ㄱ 기둥과 처마, ㅅ 지붕, ㅁ 입구, ㅇ 창으로 구성한 한글 집의 정면도." width="800" height="500">
+<picture class="gallery-still" id="gallery-picture"><source id="gallery-image-mobile" media="(max-width: 759px)" srcset="./assets/gallery/house-mobile.jpg"><img id="gallery-image" src="./assets/gallery/house.jpg" alt="한글의 선으로 지은 건축관의 고화질 전시 이미지." width="1920" height="1080" fetchpriority="high" decoding="async"></picture>
 <div id="stage" role="img" aria-label="넓은 전시관 중앙의 한글 건축물과, 돌·물·나무·빛·정원·자갈을 주제로 독립 배치된 여섯 한글 조형물."></div>
 <p class="load-status" id="load-status" role="status">3D 전시를 준비하고 있습니다.</p>
+<div class="image-feedback"><p id="viewing-announcement" role="status" aria-live="polite"></p><p id="image-status" role="status" aria-live="polite"></p><button id="retry-image" type="button" hidden>이미지 다시 불러오기</button></div>
 <div class="view-controls" role="group" aria-label="전시 화면 확대 및 축소">
 <button type="button" id="zoom-out" aria-label="축소" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
 <output id="zoom-value" aria-label="확대 배율">100%</output>
@@ -100,16 +108,9 @@ document.documentElement.dataset.view='loading';
 <div class="workshop-tools"><div class="piece-buttons" role="group" aria-label="조립할 글자 선택"><button type="button" data-piece="0" aria-pressed="true">ㅁ 입구</button><button type="button" data-piece="1" aria-pressed="false">ㅅ 지붕</button><button type="button" data-piece="2" aria-pressed="false">ㅇ 창</button></div><button class="place-button" id="place-piece" type="button" disabled>맞춰 놓기</button></div>
 <div class="workshop-options"><label><input type="checkbox" id="gravity-toggle" checked> 중력 켜기</label><button type="button" id="reset-workshop">다시 짓기</button><button type="button" id="retry-workshop" hidden>작업실 다시 열기</button></div>
 <p class="workshop-note">가벼운 나무, 단단한 돌, 묵직한 황동. 충돌과 탄성은 가상 물성입니다. 키보드는 1·2·3으로 선택, Enter로 배치합니다.</p></dialog>
-<noscript><style>.load-status{display:none}</style><p class="no-script-note">현재 글로 읽는 전시입니다. JavaScript를 켜면 3D 관람과 한글 작업실을 이용할 수 있습니다.</p></noscript>
+<noscript><style>.load-status{display:none}</style><p class="no-script-note">현재 이미지와 글로 읽는 전시입니다. JavaScript를 켜면 관람 방식 선택과 한글 작업실을 이용할 수 있습니다.</p></noscript>
 <script type="module">
-const loadingMessages={scene:'한글 건축관을 세우는 중',materials:'석재, 나무와 금속의 질감을 준비하는 중',shader:'조명과 반사를 준비하는 중',warmup:'전시실의 빛과 그림자를 미리 준비하는 중',frame:'전시관의 첫 장면을 준비하는 중',ready:'관람 준비가 끝났습니다.'};
-const showLoadingStep=(value,phase)=>{document.getElementById('loading-progress').value=value;document.getElementById('loading-phase').textContent=loadingMessages[phase];};
-document.getElementById('experience').inert=true;
-import('./interface.js').then(async ({initInterface}) => {
- const ui=initInterface();
- try {const gallery=await import('./gallery.js');if(ui.wantsText())return;const controller=await gallery.initGallery({onProgress:showLoadingStep,shouldContinue:()=>!ui.wantsText()});if(!controller)return;if(!ui.wantsText()){document.documentElement.dataset.view='3d';window.scrollTo({top:0,left:0,behavior:'instant'});}ui.attach(controller);}
- catch(error){ui.fail(error);}
-}).catch(()=>{
+import('./viewing-mode.js').then(({startViewing})=>startViewing()).catch(()=>{
  document.documentElement.dataset.view='static';document.documentElement.dataset.state='error';
  document.getElementById('experience').inert=false;
  document.getElementById('load-status').textContent='3D 전시를 열지 못했습니다. 아래 전시 설명은 계속 읽을 수 있습니다.';

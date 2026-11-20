@@ -16,8 +16,11 @@ export function fixture(){
     '[data-piece]':Array.from({length:3},(_,i)=>{const e=$('piece-'+i);e.dataset.piece=String(i);return e;}),
     '[data-open-workshop]':[$('open-workshop'),$('story-action'),$('text-workshop')],
     '[data-show-text]':[$('show-text')],
-    '[data-credits]':[$('show-credits')]
+    '[data-credits]':[$('show-credits')],
+    '[name="viewing-mode"]':['auto','3d','images'].map(value=>{const e=$('mode-'+value);e.value=value;e.checked=value==='auto';return e;}),
+    '[data-viewing-choice]':[$('retry-3d')]
   };
+  $('retry-3d').dataset.viewingChoice='3d';
   const ctx=new Proxy({},{get:(t,p)=>t[p]??(()=>{}),set:(t,p,v)=>(t[p]=v,true)});
   $('workshop-canvas').getContext=()=>ctx;$('workshop-canvas').tagName='CANVAS';
   const document=new EventTarget();Object.assign(document,{getElementById:$,querySelector:s=>$(s),querySelectorAll:s=>groups[s]??[],body:$('body'),documentElement:{dataset:{view:'static',state:'loading'}},createElement:tag=>new Element(tag),hidden:false});
