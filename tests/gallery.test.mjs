@@ -132,9 +132,17 @@ test('opaque architecture prevents a sculpture from being picked through a wall'
   assert.equal(pickVisibleArtwork(Three,ray,[sculpture],[wall]),'work');sculpture.visible=false;
   assert.equal(pickVisibleArtwork(Three,ray,[sculpture],[wall]),undefined);
 });
-test('the route returns home, is continuous in both directions and respects reduced motion',()=>{
+test('the route ends in a low frontal view of the pavilion distinct from the opening',()=>{
   const start=sample(0),end=sample(1);
-  assert.ok(start.position.distanceTo(end.position)<1e-10);assert.ok(start.direction.distanceTo(end.direction)<1e-10);
+  assert.ok(start.position.distanceTo(end.position)>10);
+  assert.ok(start.direction.x>.2);
+  assert.ok(Math.abs(end.direction.x)<1e-10&&end.direction.z<-.98);
+  assert.ok(Math.abs(end.direction.y)<.1);
+  const reduced=sampleTour(.91,{reducedMotion:true});
+  assert.deepEqual(reduced.position,sampleTour(1).position);
+  assert.deepEqual(reduced.target,sampleTour(1).target);
+});
+test('the route is continuous in both directions and respects reduced motion',()=>{
   let previous=sampleTour(0).position;
   for(let i=1;i<=2000;i++){
     const p=i/2000,a=sampleTour(p),b=sampleTour(1-(2000-i)/2000);

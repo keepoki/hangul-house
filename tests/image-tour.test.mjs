@@ -13,6 +13,15 @@ test('image navigation shows the same water room and matching portrait asset',()
   assert.match(f.$('gallery-image').alt,/자연석/);assert.match(f.$('view-label').textContent,/^물의 뜰/);assert.equal(tour.getProgress(),.26);
   assert.equal(f.window.scrollY,1872);
 });
+test('the final stop selects a separate frontal still and retains the workshop entry',()=>{
+  const {f,tour}=setup();
+  assert.equal(f.$('gallery-image').src,'./assets/gallery/house.jpg');
+  tour.goTo(1);
+  assert.equal(f.$('gallery-image').src,'./assets/gallery/finale.jpg');
+  assert.equal(f.$('gallery-image-mobile').srcset,'./assets/gallery/finale-mobile.jpg');
+  assert.match(f.$('gallery-image').alt,/정면/);
+  assert.equal(f.$('story-action').hidden,false);
+});
 test('pausing image viewing prevents its scroll handler from overwriting 3D captions',()=>{
   const {f,tour}=setup();tour.goTo(.26);tour.pause();f.window.scrollY=6000;f.fire(f.window,'scroll');
   assert.match(f.$('view-label').textContent,/^물의 뜰/);assert.equal(tour.getProgress(),.26);

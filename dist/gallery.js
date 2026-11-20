@@ -16,7 +16,7 @@ let reflectingPool=null;
 let governor=null,renderedAt=null,qualityChange=()=>{},performanceFallback=()=>{};
 let interactionEvents=null;
 let environmentDetail;
-let heroBounds,paused=false,renderFailed=false;
+let heroBounds,finaleBounds,paused=false,renderFailed=false;
 let scrollEnabled=false;
 const artworkBounds=[],detailMeshes=[],blockers=[];
 let bright = false, textTimer, scrollHeight = 1;
@@ -182,14 +182,16 @@ function setup(onProgress) {
   const joint=material('#635f56',.95);
   for(let n=-32;n<=32;n+=4){box(.018,.007,67,joint,n,-.006,0);box(67,.007,.018,joint,0,-.006,n);}
   // The pavilion is one architectural exhibit in a much larger museum.
-  box(17.7,.4,10.2,limestone,0,.2,0);
+  const pavilionBase=box(17.7,.4,10.2,limestone,0,.2,0);
+  finaleBounds=new THREE.Box3().setFromObject(pavilionBase);
   box(17.25,.08,9.7,floor,0,.44,0);
   for(let i=0;i<3;i++){
-    box(8,.12,1.0,limestone,.3,.32-i*.12,5.35+i*.55);
+    finaleBounds.expandByObject(box(8,.12,1.0,limestone,.3,.32-i*.12,5.35+i*.55));
     box(7.9,.018,.025,strip,.3,.37-i*.12,5.85+i*.55);
   }
   const pavilion=buildHangulBuilding(THREE,house,{limestone,timber,charcoal:dark,glass,strip});
   heroBounds=new THREE.Box3().setFromObject(pavilion);
+  finaleBounds.union(heroBounds);
   // A high exhibition hall frames the route without enclosing the artworks in the house.
   box(68,11,.35,hall,0,5.4,-34);box(.35,11,68,hall,-34,5.4,0);box(.35,11,68,hall,34,5.4,0);
   for(let x=-30;x<=30;x+=6){
@@ -425,7 +427,7 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
     const mobile=innerWidth<761;
     let pose=sampleTour(progress,{mobile,reducedMotion:motion.matches,zoom});
     const heroWeight=motion.matches?(pose.chapter===0||pose.chapter===7?1:0):Math.max(1-THREE.MathUtils.smoothstep(progress,.025,.075),THREE.MathUtils.smoothstep(progress,.925,.98));
-    if(heroWeight>0)pose=fitTourPose(pose,heroBounds,camera.aspect,zoom,heroWeight);
+    if(heroWeight>0)pose=fitTourPose(pose,pose.chapter===7?finaleBounds:heroBounds,camera.aspect,zoom,heroWeight);
     if(pose.chapter>0&&pose.chapter<7&&pose.focus>0)pose=fitTourPose(pose,artworkBounds[pose.chapter-1],camera.aspect,zoom,pose.focus);
     camera.position.fromArray(pose.position);camera.lookAt(...pose.target);
     camera.fov=pose.fov;camera.updateProjectionMatrix();
@@ -436,7 +438,7 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
     });
     lightArtwork(progress,pose.focus,reveal);
     if(reveal>.001)for(const item of detailMeshes){const count=detailCount(item.mesh.userData.fullDetailCount,camera.position.distanceTo(item.center),item.mesh.userData.environmentDetail);if(count!==item.mesh.count)item.mesh.count=count;}
-    if(!warmOnly&&document.documentElement.dataset.view==='3d'){$('experience').classList.toggle('is-detail',pose.focus>.35);setText('view-label',pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관');}
+    if(!warmOnly&&document.documentElement.dataset.view==='3d'){$('experience').classList.toggle('is-detail',pose.focus>.35);setText('view-label',exhibitionSites[pose.chapter-1]?.room??chapters[pose.chapter].context);}
     if(dust) dust.rotation.y=progress*.12;
     if(!prepareOnly){
       const settled=Math.abs(progress-desired)<.0004&&Math.abs(zoom-desiredZoom)<.0004;

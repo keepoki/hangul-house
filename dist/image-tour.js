@@ -1,7 +1,7 @@
 import {chapters} from './exhibition-content.js';
 import {chapterAt,tourStops} from './camera-tour.js';
 
-export const galleryStills=['house','stone','water','wood','light','garden','quiet','house'];
+export const galleryStills=['house','stone','water','wood','light','garden','quiet','finale'];
 const stillDescriptions=[
   'ㄱ 기둥과 처마, ㅅ 지붕, ㅁ 입구와 ㅇ 창으로 지은 한글 건축관.',
   '돌의 방. 석회암으로 만든 ㄱ 조형물과 자연석의 표면.',
@@ -10,7 +10,7 @@ const stillDescriptions=[
   '빛의 방. 황동 ㅎ 조형물의 곡면에 닿는 조명.',
   '초록의 정원. 식물 사이에 놓인 ㅏ 조형물.',
   '고요의 방. 서로 기대어 지붕을 이루는 ㅅ 조형물.',
-  '관람을 마치고 다시 만나는 한글 건축관. 직접 한글 집을 지어볼 수 있습니다.'
+  '한글 건축관의 정면. 네모난 ㅁ 입구와 ㅅ 지붕, 둥근 ㅇ 창이 한눈에 보입니다.'
 ];
 
 export function createImageTour({document=globalThis.document,window=globalThis.window}={}){
