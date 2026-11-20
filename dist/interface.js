@@ -1,11 +1,62 @@
 const roomIds=['home','room-stone','room-water','room-wood','room-light','room-garden','room-quiet','text-tour'];
 const navigationStops=[0,.13,.26,.39,.52,.66,.79,1];
 
+const structureParts={
+  whole:['한글 건축관','석재의 꺾인 선과 참나무의 네 획이 한 채의 집을 이룹니다.'],
+  giyeok:['ㄱ · 기둥과 처마','가로획이 앞으로 뻗어 처마를 만들고, 세로획이 그 아래 공간을 받칩니다.'],
+  mieum:['ㅁ · 입구','참나무 네 획이 사각 틀을 짭니다. 가운데 남은 공간이 드나드는 입구입니다.'],
+  siot:['ㅅ · 지붕','두 획이 위에서 만나고 양옆으로 기울어지며, 그 아래에 머물 공간을 만듭니다.'],
+  ieung:['ㅇ · 창','둥근 석재 틀의 중심을 비워, 바깥 풍경을 담는 창을 만듭니다.']
+};
+
+function wireStructureExplorer(document,{pause,resume}){
+  const $=id=>document.getElementById(id);
+  const explorer=$('structure-dialog'),figure=$('structure-figure'),reset=$('structure-reset');
+  const choices=[...document.querySelectorAll('[data-structure-part]')];
+  let opener;
+  function select(part){
+    const [title,description]=structureParts[part];
+    figure.dataset.selection=part;
+    for(const choice of choices)choice.setAttribute('aria-pressed',String(choice.dataset.structurePart===part));
+    $('structure-part-title').textContent=title;
+    $('structure-part-description').textContent=description;
+    reset.setAttribute('aria-disabled',String(part==='whole'));
+  }
+  for(const choice of choices){
+    choice.addEventListener('click',()=>{
+      const part=choice.dataset.structurePart;
+      select(figure.dataset.selection===part?'whole':part);
+    });
+  }
+  for(const button of document.querySelectorAll('[data-open-structure]')){
+    button.hidden=false;
+    button.addEventListener('click',()=>{
+      if(explorer.open)return;
+      opener=button;
+      select('whole');
+      explorer.showModal();
+      pause();
+      $('structure-title').focus({preventScroll:true});
+    });
+  }
+  reset.addEventListener('click',()=>{if(figure.dataset.selection!=='whole')select('whole');});
+  $('structure-close').addEventListener('click',()=>explorer.close());
+  explorer.addEventListener('close',()=>{
+    resume();
+    opener?.focus({preventScroll:true});
+  });
+  return explorer;
+}
+
 export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()}={}){
   const $=id=>document.getElementById(id),root=document.documentElement,help=$('help-menu'),dialog=$('workshop-dialog');
   let controller=null,textMode=false,savedScroll=0,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
   let visualView='3d';
   const isVisual=()=>root.dataset.view==='3d'||root.dataset.view==='images';
+  const structure=wireStructureExplorer(document,{
+    pause:()=>controller?.pause?.(),
+    resume:()=>{if(isVisual())controller?.resume?.();}
+  });
   function showText(target='text-tour'){
     if(isVisual())savedScroll=scrollY;
     textMode=true;root.dataset.view='static';$('experience').inert=false;controller?.pause?.();help.open=false;$('resume-gallery').hidden=false;
@@ -34,7 +85,7 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   $('retry-gallery').addEventListener('click',()=>onRetry());
   addEventListener('keydown',e=>{
     if(e.key==='Escape'){help.open=false;const modes=$('viewing-menu');if(modes.open){modes.open=false;modes.querySelector?.('summary')?.focus();}}
-    if(!controller||!isVisual()||dialog.open||e.ctrlKey||e.metaKey||e.altKey||e.target?.isContentEditable||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName))return;
+    if(!controller||!isVisual()||dialog.open||structure.open||e.ctrlKey||e.metaKey||e.altKey||e.target?.isContentEditable||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName))return;
     if(['+','=','-','0'].includes(e.key)){e.preventDefault();if(e.key==='0')controller.setZoom(1);else controller.changeZoom(e.key==='-'?-.15:.15);}
   });
   document.addEventListener('click',e=>{if(help.open&&!help.contains(e.target))help.open=false;const modes=$('viewing-menu');if(modes.open&&!modes.contains(e.target))modes.open=false;});
@@ -64,6 +115,6 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   function fail(error){clearTimeout(timeout);controller=null;root.dataset.view='static';root.dataset.state='error';$('experience').inert=false;$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
   return {wantsText:()=>textMode,fail,
     setViewingState({preference,active,status,notice=''}){document.querySelectorAll('[name="viewing-mode"]').forEach(input=>input.checked=input.value===preference);$('viewing-current').textContent=active==='3d'?'3D':'이미지';$('viewing-status').textContent=status;$('viewing-announcement').textContent=notice;},
-    attach(value,{view='3d'}={}){clearTimeout(timeout);controller=value;visualView=view;root.dataset.state='ready';$('experience').inert=false;$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);if(textMode)root.dataset.view='static';else root.dataset.view=view;if(textMode||dialog.open)controller.pause?.();controller.refresh();}
+    attach(value,{view='3d'}={}){clearTimeout(timeout);controller=value;visualView=view;root.dataset.state='ready';$('experience').inert=false;$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);if(textMode)root.dataset.view='static';else root.dataset.view=view;if(textMode||dialog.open||structure.open)controller.pause?.();controller.refresh();}
   };
 }

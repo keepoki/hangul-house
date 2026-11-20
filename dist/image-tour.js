@@ -34,6 +34,7 @@ export function createImageTour({document=globalThis.document,window=globalThis.
     $('story-title').innerHTML=data.title;$('story-body').innerHTML=data.body;$('room-context').textContent=data.context;$('story-note').textContent=data.note;
     $('work-glyph').textContent=data.glyph;$('work-name').textContent=data.name;$('work-material').textContent=data.material;
     $('experience').classList.toggle('is-detail',index>0&&index<7);$('story-action').hidden=index!==7;
+    $('structure-action').hidden=index!==0;
     $('view-label').textContent=data.context;$('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
     document.querySelectorAll('[data-stop]').forEach((button,i)=>{button.classList.toggle('active',i===index);if(i===index)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
   }

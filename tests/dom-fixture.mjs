@@ -15,6 +15,8 @@ export function fixture(){
     '[data-goto]':[0,.13].map((p,i)=>{const e=$('goto-'+i);e.dataset.goto=String(p);return e;}),
     '[data-piece]':Array.from({length:3},(_,i)=>{const e=$('piece-'+i);e.dataset.piece=String(i);return e;}),
     '[data-open-workshop]':[$('open-workshop'),$('story-action'),$('text-workshop')],
+    '[data-open-structure]':[$('structure-action'),$('text-structure')],
+    '[data-structure-part]':['giyeok','mieum','siot','ieung'].map(part=>{const button=$('part-'+part);button.dataset.structurePart=part;return button;}),
     '[data-show-text]':[$('show-text')],
     '[data-credits]':[$('show-credits')],
     '[name="viewing-mode"]':['auto','3d','images'].map(value=>{const e=$('mode-'+value);e.value=value;e.checked=value==='auto';return e;}),

@@ -77,6 +77,7 @@ function updateChapter(){
   $('work-name').textContent=data.name;
   $('work-material').textContent=data.material;
   $('story-action').hidden=index!==7;
+  $('structure-action').hidden=index!==0;
   document.querySelectorAll('[data-stop]').forEach((button,i)=>{
     button.classList.toggle('active',i===index);
     if(i===index){button.setAttribute('aria-current','step');const nav=button.parentElement;if(nav?.scrollWidth>nav.clientWidth){const left=button.offsetLeft-nav.offsetLeft; if(left<nav.scrollLeft||left+button.offsetWidth>nav.scrollLeft+nav.clientWidth)nav.scrollLeft=left-(nav.clientWidth-button.offsetWidth)/2;}}else button.removeAttribute('aria-current');

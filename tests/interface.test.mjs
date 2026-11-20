@@ -19,6 +19,29 @@ test('navigation and zoom controls are wired to the 3D controller',()=>{
   assert.ok(calls.some(v=>Array.isArray(v)&&v[0]==='zoom'&&v[1]===.15));
   assert.ok(calls.includes('light'));assert.equal(f.$('zoom-in').disabled,false);
 });
+test('exploring a structural part pauses the gallery and returns focus and view after closing',()=>{
+  const {f,ui,calls,controller}=boot();ui.attach(controller);
+  const opener=f.$('structure-action'),structure=f.$('structure-dialog'),figure=f.$('structure-figure');
+  f.fire(opener,'click');
+  assert.equal(structure.open,true);
+  assert.ok(calls.includes('gallery-pause'));
+  assert.equal(figure.dataset.selection,'whole');
+  for(const [part,role] of [['giyeok','기둥'],['mieum','입구'],['siot','지붕'],['ieung','창']]){
+    const control=f.$('part-'+part);
+    f.fire(control,'click');
+    assert.equal(figure.dataset.selection,part);
+    assert.equal(control.attrs['aria-pressed'],'true');
+    assert.match(f.$('structure-part-title').textContent,new RegExp(role));
+  }
+  assert.equal(f.$('part-giyeok').attrs['aria-pressed'],'false');
+  f.fire(f.$('structure-reset'),'click');
+  assert.equal(figure.dataset.selection,'whole');
+  f.fire(f.$('structure-close'),'click');
+  assert.equal(structure.open,false);
+  assert.equal(opener.focused,true);
+  assert.ok(calls.includes('gallery-resume'));
+  assert.equal(f.document.documentElement.dataset.view,'3d');
+});
 test('manual viewing choices close the menu and the remembered mode is reflected in its radios',()=>{
   const choices=[],{f,ui}=boot({onModeChange:value=>choices.push(value)});
   f.$('viewing-menu').open=true;const images=f.$('mode-images');images.checked=true;f.fire(images,'change');
