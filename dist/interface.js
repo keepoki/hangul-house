@@ -50,7 +50,7 @@ function wireStructureExplorer(document,{pause,resume}){
 
 export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()}={}){
   const $=id=>document.getElementById(id),root=document.documentElement,help=$('help-menu'),dialog=$('workshop-dialog');
-  let controller=null,textMode=false,savedScroll=0,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
+  let controller=null,textMode=root.dataset.readFirst==='true',savedScroll=0,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
   let visualView='3d';
   const isVisual=()=>root.dataset.view==='3d'||root.dataset.view==='images';
   const structure=wireStructureExplorer(document,{
@@ -115,6 +115,6 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   function fail(error){clearTimeout(timeout);controller=null;root.dataset.view='static';root.dataset.state='error';$('experience').inert=false;$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
   return {wantsText:()=>textMode,fail,
     setViewingState({preference,active,status,notice=''}){document.querySelectorAll('[name="viewing-mode"]').forEach(input=>input.checked=input.value===preference);$('viewing-current').textContent=active==='3d'?'3D':'이미지';$('viewing-status').textContent=status;$('viewing-announcement').textContent=notice;},
-    attach(value,{view='3d'}={}){clearTimeout(timeout);controller=value;visualView=view;root.dataset.state='ready';$('experience').inert=false;$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);if(textMode)root.dataset.view='static';else root.dataset.view=view;if(textMode||dialog.open||structure.open)controller.pause?.();controller.refresh();}
+    attach(value,{view='3d'}={}){clearTimeout(timeout);controller=value;visualView=view;root.dataset.state='ready';$('experience').inert=false;$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);root.dataset.view=textMode?'static':view;if(textMode)$('resume-gallery').hidden=false;if(textMode||dialog.open||structure.open)controller.pause?.();controller.refresh();}
   };
 }

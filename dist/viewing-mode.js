@@ -96,12 +96,15 @@ export function startViewing({document=globalThis.document,window=globalThis.win
       return handleGalleryFailure('이미지 관람 · 이 환경에서는 3D를 열지 못했습니다. 관람 방식에서 다시 선택할 수 있습니다.');
     }
   }
-  root.dataset.view='loading';
+  const readFirst=ui.wantsText();
+  if(!readFirst)root.dataset.view='loading';
   root.dataset.state='loading';
-  experience.inert=true;
+  experience.inert=!readFirst;
   window.addEventListener('museum:failure',()=>{
     handleGalleryFailure('이미지 관람 · 3D 연결이 중단되어 같은 공간의 이미지로 전환했습니다.');
   });
-  const ready=choose(preference,{save:false});
+  const ready=readFirst
+    ? showArrivalImages(selection,'이미지 관람 · 고화질 전시 이미지로 둘러봅니다.')
+    : choose(preference,{save:false});
   return {choose,ready,get preference(){return preference;}};
 }

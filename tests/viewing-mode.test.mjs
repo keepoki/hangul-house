@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startViewing} from '../dist/viewing-mode.js';
 
-function setup(preference='auto',loadGallery,storageOverride,prepareImage){
+function setup(preference='auto',loadGallery,storageOverride,prepareImage,{readFirst=false}={}){
   const state={view:'',status:'',progress:.26},saved=new Map([['hangul-house:viewing-mode',preference]]),listeners={};
   const image={getProgress:()=>state.progress,seek:p=>{state.progress=p;state.seeks=(state.seeks??0)+1;},pause(){},resume(){},refresh(){}};
   if(prepareImage)image.prepare=prepareImage;
-  const elements=new Map(),document={documentElement:{dataset:{}},getElementById(id){if(!elements.has(id))elements.set(id,{});return elements.get(id);}};
+  const elements=new Map(),document={documentElement:{dataset:readFirst?{view:'static',readFirst:'true'}:{}},getElementById(id){if(!elements.has(id))elements.set(id,{});return elements.get(id);}};
   const gallery={...image,dispose(){}};
-  const ui={wantsText:()=>false,attach(c,{view}={}){state.view=view;state.controller=c;},setViewingState(s){Object.assign(state,s);},fail(){throw new Error('Must retain a useful image tour');}};
+  const ui={wantsText:()=>readFirst,attach(c,{view}={}){state.view=view;state.controller=c;},setViewingState(s){Object.assign(state,s);},fail(){throw new Error('Must retain a useful image tour');}};
   let loads=0;
   const manager=startViewing({storage:storageOverride??{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},document,window:{addEventListener:(k,v)=>listeners[k]=v},imageFactory:()=>image,interfaceFactory:options=>{ui.options=options;return ui;},loadGallery:async()=>{loads++;return loadGallery?loadGallery(gallery):{initGallery:async()=>gallery};},setTimer:()=>1,clearTimer:()=>{}});
   return{state,saved,manager,ui,listeners,document,get loads(){return loads;},gallery};
@@ -32,6 +32,15 @@ test('saved image viewing also waits for its first image before dismissing the a
 test('a saved image preference opens images without importing Three.js',async()=>{
   const app=setup('images');await app.manager.ready;
   assert.equal(app.loads,0);assert.equal(app.state.view,'images');
+});
+test('an early text choice stays visible and skips startup 3D work',async()=>{
+  const app=setup('auto',undefined,undefined,undefined,{readFirst:true});
+  await app.manager.ready;
+  assert.equal(app.document.documentElement.dataset.view,'static');
+  assert.equal(app.document.getElementById('experience').inert,false);
+  assert.equal(app.state.view,'images');
+  assert.equal(app.loads,0);
+  assert.equal(app.manager.preference,'auto');
 });
 test('switching modes preserves the current room and remembers the explicit choice',async()=>{
   const app=setup('images');await app.manager.choose('3d');

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {fixture} from './dom-fixture.mjs';
 const original=await readFile(new URL('../dist/interface.js',import.meta.url),'utf8');
-function boot(options){
+function boot(options,{readFirst=false}={}){
   const f=fixture(),calls=[];
+  if(readFirst)f.document.documentElement.dataset.readFirst='true';
   const workshop={open(){calls.push('workshop-open');},pause(){calls.push('workshop-pause');}};
   const source=original.replace(/^export\s+/gm,'').replace("import('./workshop.js')",'Promise.resolve({createWorkshop:()=>fakeWorkshop})');
   const init=new Function('document','addEventListener','requestAnimationFrame','scrollY','scrollTo','location','setTimeout','clearTimeout','fakeWorkshop','console','options',source+'\nreturn initInterface(options);');
@@ -61,6 +62,13 @@ test('a text-reading visitor is not forced back into the 3D view when loading fi
   assert.equal(f.document.documentElement.dataset.view,'static');assert.equal(f.$('resume-gallery').hidden,false);
   f.fire(f.$('resume-gallery'),'click');assert.equal(f.document.documentElement.dataset.view,'3d');
 });
+test('the interface preserves a text tour opened before its module loaded',()=>{
+  const {f,ui,controller}=boot(undefined,{readFirst:true});
+  assert.equal(ui.wantsText(),true);
+  ui.attach(controller,{view:'images'});
+  assert.equal(f.document.documentElement.dataset.view,'static');
+  assert.equal(f.$('resume-gallery').hidden,false);
+});
 test('the workshop opens within the page and restores focus and scrolling when closed',async()=>{
   const {f,calls,ui,controller}=boot();ui.attach(controller);f.document.body.style.overflow='auto';const opener=f.$('open-workshop');
   f.fire(opener,'click');await Promise.resolve();await Promise.resolve();
@@ -87,4 +95,17 @@ test('fresh reload disables scroll restoration and shows the arrival screen',asy
   code=code.replace("import('./viewing-mode.js')",'return Promise.resolve({startViewing})');
   await new Function('document','startViewing',code)(f.document,()=>{started=true;return {ready:Promise.resolve()};});
   assert.equal(started,true);assert.equal(f.document.documentElement.dataset.state,'loading');
+});
+test('the arrival text button can open the text tour before dynamic imports resolve',async()=>{
+  const html=await readFile(new URL('../dist/index.html',import.meta.url),'utf8'),f=fixture();
+  const head=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  new Function('history','location','performance','document',head)({}, {hash:''}, {}, f.document);
+  f.$('experience').inert=true;
+  const click=new Event('click');
+  Object.defineProperty(click,'target',{value:{closest:selector=>selector==='.loading-text-link'}});
+  f.document.dispatchEvent(click);
+  assert.equal(f.document.documentElement.dataset.view,'static');
+  assert.equal(f.document.documentElement.dataset.readFirst,'true');
+  assert.equal(f.$('experience').inert,false);
+  assert.equal(f.$('text-tour').focused,true);
 });
