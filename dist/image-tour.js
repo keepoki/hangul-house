@@ -18,7 +18,7 @@ export function createImageTour({document=globalThis.document,window=globalThis.
   let active=false,progress=0,chapter=-1,zoom=1,bright=false;
   const status=$('image-status'),retry=$('retry-image');
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
-  const trackHeight=()=>Math.max(1,(root.scrollHeight||window.innerHeight)-window.innerHeight);
+  const trackHeight=()=>Math.max(1,$('journey').offsetHeight);
   function imageLoading(){status.textContent='전시 이미지를 불러오는 중입니다.';retry.hidden=true;}
   function imageLoaded(){if(active){status.textContent='';retry.hidden=true;}}
   img.addEventListener('load',imageLoaded);
@@ -45,16 +45,17 @@ export function createImageTour({document=globalThis.document,window=globalThis.
     $('story-title').innerHTML=data.title;$('story-body').innerHTML=data.body;$('room-context').textContent=data.context;$('story-note').textContent=data.note;
     $('work-glyph').textContent=data.glyph;$('work-name').textContent=data.name;$('work-material').textContent=data.material;
     $('experience').classList.toggle('is-detail',index>0&&index<7);$('story-action').hidden=index!==7;
+    $('story-read').hidden=index!==7;
     $('structure-action').hidden=index!==0;
     $('story-start').hidden=index!==0;
-    $('view-label').textContent=data.context;$('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
+    $('view-label').textContent=data.context;$('scroll-label').textContent=index===7?'스크롤해 전시 글 읽기':index===0?'아래로 스크롤해 관람':'다음 공간으로';
     updateTourNavigation(document,index);
   }
   function update(){if(!active||root.dataset.view!=='images')return;progress=clamp(window.scrollY/trackHeight(),0,1);$('tour-progress').textContent=Math.round(progress*100)+'%';paint();}
   function setZoom(value){zoom=clamp(value,.75,1.8);img.style.transform=`scale(${zoom})`;$('zoom-value').textContent=Math.round(zoom*100)+'%';$('zoom-in').disabled=zoom>=1.8;$('zoom-out').disabled=zoom<=.75;}
-  function seek(value){progress=clamp(value,0,1);window.scrollTo({top:progress*trackHeight(),behavior:'instant'});paint();$('tour-progress').textContent=Math.round(progress*100)+'%';}
+  function seek(value,{scroll=true}={}){progress=clamp(value,0,1);if(scroll)window.scrollTo({top:progress*trackHeight(),behavior:'instant'});paint();$('tour-progress').textContent=Math.round(progress*100)+'%';}
   window.addEventListener('scroll',update,{passive:true});
-  window.addEventListener('resize',()=>{if(active){seek(progress);updateTourNavigation(document,chapter);}},{passive:true});
+  window.addEventListener('resize',()=>{if(active){seek(progress,{scroll:progress<1||window.scrollY<=trackHeight()});updateTourNavigation(document,chapter);}},{passive:true});
   return {
     prepare:()=>img.decode(),
     getProgress:()=>progress,seek,

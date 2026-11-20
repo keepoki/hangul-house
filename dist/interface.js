@@ -51,17 +51,33 @@ function wireStructureExplorer(document,{pause,resume}){
 export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()}={}){
   const $=id=>document.getElementById(id),root=document.documentElement,help=$('help-menu'),dialog=$('workshop-dialog');
   const modes=$('viewing-menu'),resumeButton=$('resume-gallery');
-  let controller=null,textMode=root.dataset.readFirst==='true',savedScroll=0,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
+  let controller=null,textMode=root.dataset.readFirst==='true',savedProgress=null,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
   let visualView='3d';
   const isVisual=()=>root.dataset.view==='3d'||root.dataset.view==='images';
   const structure=wireStructureExplorer(document,{
     pause:()=>controller?.pause?.(),
     resume:()=>{if(isVisual())controller?.resume?.();}
   });
+  function focusSection(section){
+    section.tabIndex=-1;
+    section.focus({preventScroll:true});
+  }
   function showText(target='text-tour'){
-    if(isVisual())savedScroll=scrollY;
-    textMode=true;root.dataset.view='static';$('experience').inert=false;controller?.pause?.();help.open=false;resumeButton.hidden=false;
-    requestAnimationFrame(()=>{const section=$(target);section?.scrollIntoView({behavior:'instant',block:'start'});if(section){section.tabIndex=-1;section.focus({preventScroll:true});}});
+    if(controller&&isVisual()){
+      savedProgress=controller.getProgress();
+      controller.seek(1,{scroll:false});
+    }else{
+      textMode=true;
+      root.dataset.view='static';
+      $('experience').inert=false;
+      controller?.pause?.();
+    }
+    help.open=false;resumeButton.hidden=false;
+    requestAnimationFrame(()=>{
+      const section=$(target);
+      section.scrollIntoView({behavior:'instant',block:'start'});
+      focusSection(section);
+    });
   }
   function go(index){
     help.open=false;
@@ -79,7 +95,16 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   document.querySelectorAll('[data-credits]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();showText('credits');}));
   document.querySelector('.skip').addEventListener('click',e=>{e.preventDefault();showText();});
   document.querySelector('.failure-actions a').addEventListener('click',e=>{e.preventDefault();showText();});
-  resumeButton.addEventListener('click',()=>{textMode=false;if(!controller){onRetry();return;}root.dataset.view=visualView;scrollTo({top:savedScroll,behavior:'instant'});controller.resume?.();controller.refresh();});
+  resumeButton.addEventListener('click',()=>{
+    const progress=savedProgress??(textMode?0:1);
+    textMode=false;savedProgress=null;
+    if(!controller){onRetry();return;}
+    root.dataset.view=visualView;
+    controller.seek(progress);
+    controller.resume?.();
+    controller.refresh();
+    focusSection($('story-title'));
+  });
   function closeViewingMenu(){
     modes.open=false;
     modes.querySelector('summary')?.focus({preventScroll:true});
@@ -90,7 +115,10 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   $('zoom-out').addEventListener('click',()=>controller?.changeZoom(-.15));
   $('zoom-reset').addEventListener('click',()=>controller?.setZoom(1));
   $('light-toggle').addEventListener('click',()=>controller?.toggleLighting());
-  $('next-stop').addEventListener('click',()=>controller?.next());
+  $('next-stop').addEventListener('click',()=>{
+    if(!$('story-read').hidden)showText();
+    else controller?.next();
+  });
   $('retry-gallery').addEventListener('click',()=>onRetry());
   addEventListener('keydown',e=>{
     if(e.key==='Escape'){help.open=false;if(modes.open)closeViewingMenu();}
@@ -129,7 +157,7 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
       resumeButton.textContent=view==='images'?'이미지 관람으로 돌아가기':'3D 관람으로 돌아가기';
       ['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);
       root.dataset.view=textMode?'static':view;
-      if(textMode)resumeButton.hidden=false;
+      resumeButton.hidden=false;
       if(textMode||dialog.open||structure.open)controller.pause?.();
       controller.refresh();
     }

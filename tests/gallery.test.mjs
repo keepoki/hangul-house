@@ -21,6 +21,7 @@ function element(id='') {
 const context={createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){},fillRect(){},beginPath(){},moveTo(){},bezierCurveTo(){},stroke(){},fillText(){}};
 const canvas=()=>({width:0,height:0,getContext:()=>context});
 const document={getElementById:element,querySelector:element,querySelectorAll:()=>[],createElement:canvas,addEventListener(){},hidden:false,documentElement:{scrollHeight:6300,dataset:{view:'3d'}}};
+element('journey').offsetHeight=5400;
 let renderedScene,renderedCamera,lastScroll,clock=0,renderCount=0,initialFrame;
 class Renderer {
   constructor(){this.domElement=element('canvas');this.shadowMap={};}

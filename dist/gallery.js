@@ -29,7 +29,7 @@ const exhibitionGroups=[];
 const stage = $('stage');
 const clamp = THREE.MathUtils.clamp;
 const setText=(id,value)=>{const el=$(id);if(el.textContent!==value)el.textContent=value;};
-function measureScrollHeight(){scrollHeight=Math.max(1,document.documentElement.scrollHeight-innerHeight);}
+function measureScrollHeight(){scrollHeight=Math.max(1,$('journey').offsetHeight);}
 
 function updateScroll() {
   if(document.documentElement.dataset.view!=='3d')return;
@@ -72,7 +72,7 @@ function updateChapter({chapter:index,story}){
   if(index!==chapter){
     chapter=index;
     updateTourNavigation(document,index);
-    $('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
+    $('scroll-label').textContent=index===7?'스크롤해 전시 글 읽기':index===0?'아래로 스크롤해 관람':'다음 공간으로';
   }
   if(story===shownStory)return;
   shownStory=story;
@@ -85,6 +85,7 @@ function updateChapter({chapter:index,story}){
   $('work-name').textContent=data.name;
   $('work-material').textContent=data.material;
   $('story-action').hidden=story!==7;
+  $('story-read').hidden=story!==7;
   $('structure-action').hidden=story!==0;
   $('story-start').hidden=story!==0;
   $('experience').classList.toggle('is-detail',story!==null&&story>0&&story<7);
@@ -483,7 +484,7 @@ export async function initGallery({onProgress=()=>{},shouldContinue=()=>true,onQ
   draw(performance.now(),true);onProgress(100,'ready');
   return {
     getProgress:()=>progress,
-    seek(value){scrollEnabled=true;progress=desired=clamp(value,0,1);measureScrollHeight();scrollTo({top:progress*scrollHeight,behavior:'instant'});chapter=-1;shownStory=undefined;requestDraw();},
+    seek(value,{scroll=true}={}){scrollEnabled=true;progress=desired=clamp(value,0,1);measureScrollHeight();if(scroll)scrollTo({top:progress*scrollHeight,behavior:'instant'});chapter=-1;shownStory=undefined;requestDraw();},
     dispose:disposeGallery,
     goTo,setZoom,toggleLighting,refresh(){resize();measureScrollHeight();updateScroll();},
     pause(){paused=true;cancelDraw();},resume(){if(renderFailed)return;paused=false;lastTime=0;resize();updateScroll();requestDraw();},

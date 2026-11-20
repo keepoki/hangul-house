@@ -4,7 +4,8 @@ import {createImageTour} from '../dist/image-tour.js';
 import {fixture} from './dom-fixture.mjs';
 
 function setup(){
-  const f=fixture();Object.assign(f.window,{innerHeight:800,scrollY:0,scrollTo({top}){this.scrollY=top;}});f.document.documentElement.scrollHeight=8000;f.document.documentElement.dataset.view='images';
+  const f=fixture();Object.assign(f.window,{innerHeight:800,scrollY:0,scrollTo({top}){this.scrollY=top;}});f.document.documentElement.scrollHeight=11000;f.document.documentElement.dataset.view='images';
+  f.$('journey').offsetHeight=7200;
   f.document.baseURI='https://example.test/';
   f.$('gallery-image-mobile').media='(orientation: portrait)';
   f.window.matchMedia=()=>({matches:true});
@@ -63,4 +64,17 @@ test('retrying a landscape image keeps the portrait source for rotation',()=>{
   f.fire(f.$('retry-image'),'click');
   assert.match(image.src,/water\.jpg\?retry=\d+/);
   assert.equal(source.srcset,'./assets/gallery/water-mobile.jpg');
+});
+test('the finale comes before the article and image viewing stays on it while reading',()=>{
+  const {f,tour}=setup();
+  tour.goTo(1);
+  assert.equal(f.window.scrollY,7200);
+  assert.equal(f.$('story-read').hidden,false);
+  f.window.scrollY=9100;
+  f.fire(f.window,'scroll');
+  assert.equal(tour.getProgress(),1);
+  f.fire(f.window,'resize');
+  assert.equal(f.window.scrollY,9100);
+  tour.seek(1,{scroll:false});
+  assert.equal(f.window.scrollY,9100);
 });

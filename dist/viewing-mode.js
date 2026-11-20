@@ -30,11 +30,14 @@ export function startViewing({document=globalThis.document,window=globalThis.win
     if(root.dataset.state==='loading')loadingStep(100,'ready');
     root.dataset.state='ready';
     experience.inert=false;
-    const progress=current.getProgress?.()??0;current.pause();current=controller;
+    const wasVisual=root.dataset.view==='3d'||root.dataset.view==='images';
+    const inNotes=wasVisual&&window.scrollY>document.getElementById('journey').offsetHeight;
+    const progress=inNotes?1:(current.getProgress?.()??0);
+    current.pause();current=controller;
     // Switch layout before deriving the new document scroll range.
     if(!ui.wantsText()){
       document.documentElement.dataset.view=view;
-      controller.resume?.();controller.seek?.(progress);
+      controller.seek?.(progress,{scroll:!inNotes});controller.resume?.();
     }
     ui.attach(controller,{view});status(message,notify);
   }

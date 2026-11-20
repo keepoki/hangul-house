@@ -4,14 +4,15 @@ import {startViewing} from '../dist/viewing-mode.js';
 
 function setup(preference='auto',loadGallery,storageOverride,prepareImage,{readFirst=false}={}){
   const state={view:'',status:'',progress:.26},saved=new Map([['hangul-house:viewing-mode',preference]]),listeners={};
-  const image={getProgress:()=>state.progress,seek:p=>{state.progress=p;state.seeks=(state.seeks??0)+1;},pause(){},resume(){},refresh(){}};
+  const image={getProgress:()=>state.progress,seek:(p,options)=>{state.progress=p;state.seekOptions=options;state.seeks=(state.seeks??0)+1;},pause(){},resume(){},refresh(){}};
   if(prepareImage)image.prepare=prepareImage;
   const elements=new Map(),document={documentElement:{dataset:readFirst?{view:'static',readFirst:'true'}:{}},getElementById(id){if(!elements.has(id))elements.set(id,{});return elements.get(id);}};
   const gallery={...image,dispose(){}};
   const ui={wantsText:()=>readFirst,attach(c,{view}={}){state.view=view;state.controller=c;},setViewingState(s){Object.assign(state,s);},fail(){throw new Error('Must retain a useful image tour');}};
   let loads=0;
-  const manager=startViewing({storage:storageOverride??{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},document,window:{addEventListener:(k,v)=>listeners[k]=v},imageFactory:()=>image,interfaceFactory:options=>{ui.options=options;return ui;},loadGallery:async()=>{loads++;return loadGallery?loadGallery(gallery):{initGallery:async()=>gallery};},setTimer:()=>1,clearTimer:()=>{}});
-  return{state,saved,manager,ui,listeners,document,get loads(){return loads;},gallery};
+  const window={scrollY:0,addEventListener:(k,v)=>listeners[k]=v};
+  const manager=startViewing({storage:storageOverride??{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},document,window,imageFactory:()=>image,interfaceFactory:options=>{ui.options=options;return ui;},loadGallery:async()=>{loads++;return loadGallery?loadGallery(gallery):{initGallery:async()=>gallery};},setTimer:()=>1,clearTimer:()=>{}});
+  return{state,saved,manager,ui,listeners,document,window,get loads(){return loads;},gallery};
 }
 
 test('the original arrival screen stays visible until 3D has rendered its first frame',async()=>{
@@ -73,4 +74,13 @@ test('context failure while reading text does not scroll the visitor out of the 
   app.ui.wantsText=()=>true;
   app.listeners['museum:failure']();
   assert.equal(app.state.seeks,seeks);
+});
+test('switching from 3D to images during inline notes does not move the page',async()=>{
+  const app=setup('3d');await app.manager.ready;
+  app.document.getElementById('journey').offsetHeight=7200;
+  app.window.scrollY=8300;
+  app.listeners['museum:failure']();
+  assert.equal(app.state.view,'images');
+  assert.equal(app.state.progress,1);
+  assert.equal(app.state.seekOptions.scroll,false);
 });

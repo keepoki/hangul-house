@@ -12,7 +12,7 @@ function boot(options,{readFirst=false}={}){
   const source=original.replace(/^export\s+/gm,'').replace("import('./workshop.js')",'Promise.resolve({createWorkshop:()=>fakeWorkshop})');
   const init=new Function('document','addEventListener','requestAnimationFrame','scrollY','scrollTo','location','setTimeout','clearTimeout','fakeWorkshop','console','options',source+'\nreturn initInterface(options);');
   const ui=init(f.document,f.window.addEventListener.bind(f.window),fn=>{fn();return 1;},350,f.scrollTo,f.location,f.time,f.clear,workshop,{warn(){}},options);
-  const controller={goTo:p=>calls.push(['go',p]),refresh:()=>calls.push('refresh'),pause:()=>calls.push('gallery-pause'),resume:()=>calls.push('gallery-resume'),changeZoom:p=>calls.push(['zoom',p]),setZoom:p=>calls.push(['setZoom',p]),toggleLighting:()=>calls.push('light'),next:()=>calls.push('next')};
+  const controller={getProgress:()=>.26,seek:(p,options)=>calls.push(['seek',p,options]),goTo:p=>calls.push(['go',p]),refresh:()=>calls.push('refresh'),pause:()=>calls.push('gallery-pause'),resume:()=>calls.push('gallery-resume'),changeZoom:p=>calls.push(['zoom',p]),setZoom:p=>calls.push(['setZoom',p]),toggleLighting:()=>calls.push('light'),next:()=>calls.push('next')};
   return{f,ui,calls,controller};
 }
 test('navigation and zoom controls are wired to the 3D controller',()=>{
@@ -80,13 +80,25 @@ test('the interface preserves a text tour opened before its module loaded',()=>{
 });
 test('the text tour names the previous viewing mode on its return button',()=>{
   for(const [view,mode] of [['images','이미지'],['3d','3D']]){
-    const {f,ui,controller}=boot();
+    const {f,ui,calls,controller}=boot();
     ui.attach(controller,{view});
     f.fire(f.groups['[data-show-text]'][0],'click');
+    assert.equal(f.document.documentElement.dataset.view,view);
+    assert.equal(ui.wantsText(),false);
+    assert.equal(f.$('text-tour').focused,true);
+    assert.deepEqual(calls.at(-1),['seek',1,{scroll:false}]);
     assert.equal(f.$('resume-gallery').textContent,mode+' 관람으로 돌아가기');
     f.fire(f.$('resume-gallery'),'click');
     assert.equal(f.document.documentElement.dataset.view,view);
+    assert.ok(calls.some(entry=>Array.isArray(entry)&&entry[0]==='seek'&&entry[1]===.26));
   }
+});
+test('returning from the article reached by scrolling restores the gallery finale',()=>{
+  const {f,ui,controller,calls}=boot();ui.attach(controller);
+  assert.equal(f.$('resume-gallery').hidden,false);
+  f.fire(f.$('resume-gallery'),'click');
+  assert.ok(calls.some(entry=>Array.isArray(entry)&&entry[0]==='seek'&&entry[1]===1));
+  assert.equal(f.$('story-title').focused,true);
 });
 test('gallery copy retains a space where mobile hides the line break',()=>{
   for(const {title,body} of chapters){
