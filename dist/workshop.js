@@ -1,22 +1,87 @@
 import { createWorkshopWorld, pieces } from './workshop-physics.js';
 
 export function createWorkshop() {
-  const $=id=>document.getElementById(id),canvas=$('workshop-canvas'),ctx=canvas.getContext('2d');
+  const $=id=>document.getElementById(id);
+  const canvas=$('workshop-canvas'),ctx=canvas.getContext('2d'),grip=$('workshop-grip');
   if(!ctx)throw new Error('Canvas is unavailable');
+
+  const steps=[...document.querySelectorAll('[data-workshop-step]')];
+  const exhibit=$('workshop-exhibit'),status=$('workshop-status'),placeButton=$('place-piece');
+  const undoButton=$('undo-workshop'),resetButton=$('reset-workshop'),gravityToggle=$('gravity-toggle');
   const events=new AbortController(),options={signal:events.signal};
-  let active=false,frame=0,last=0,pointer=null,width=600,height=360,unit=40,originX=300,originY=330;
-  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let model=null;
-  model=createWorkshopWorld({gravity:!reduced,onChange:()=>{update();kick();}});
-  $('gravity-toggle').checked=!reduced;
-  function update(){
-    if(!model)return;
-    document.querySelectorAll('[data-piece]').forEach((b,i)=>{b.setAttribute('aria-pressed',String(i===model.selected));b.dataset.placed=String(model.bodies[i].userData.placed);});
-    $('place-piece').disabled=model.bodies[model.selected].userData.placed;
-    const message=model.complete?'집 한 채를 완성했습니다. 한글의 선이 공간이 되었어요.':model.count+' / 3 조각 완성 · '+pieces[model.selected].char+' '+pieces[model.selected].name+'를 윤곽에 맞춰 놓아보세요.';
-    if($('workshop-status').textContent!==message)$('workshop-status').textContent=message;
+  const exhibitParts=[
+    {id:'mieum',room:'나무의 뜰',object:'입구를',guide:'바닥에 네모난 입구를 세워보세요.',detail:'ㅁ의 네 획으로 드나들 수 있는 입구를 만듭니다.'},
+    {id:'siot',room:'고요의 방',object:'지붕을',guide:'입구 위에 두 획이 만나는 지붕을 얹어보세요.',detail:'ㅅ의 두 획을 기대어 입구 위에 지붕을 얹습니다.'},
+    {id:'ieung',room:'물의 뜰',object:'창을',guide:'입구 오른쪽에 둥근 창을 맞춰보세요.',detail:'ㅇ의 빈 가운데로 물과 빛을 담는 창을 냅니다.'}
+  ];
+  const pieceShades=['#edc894','#f1e5cb','#e0bc76'];
+  let active=false,frame=0,last=0,drag=null,aligned=false,ending=false;
+  let width=600,height=400,unit=40,originX=300,originY=330;
+  const model=createWorkshopWorld({gravity:false,assembly:true,onChange:kick});
+
+  const preview=document.querySelector('#structure-figure .structure-model').cloneNode(true);
+  preview.querySelectorAll('.structure-lifted').forEach(part=>part.remove());
+  const named=preview.getAttribute('aria-labelledby').split(' ');
+  for(const id of named)preview.querySelector('#'+id).id='workshop-'+id;
+  preview.setAttribute('aria-labelledby',named.map(id=>'workshop-'+id).join(' '));
+  const shadow=preview.querySelector('[filter]');
+  const shadowId=preview.querySelector('filter');
+  shadowId.id='workshop-'+shadowId.id;
+  shadow.setAttribute('filter','url(#'+shadowId.id+')');
+  preview.setAttribute('viewBox','30 35 646 430');
+  $('workshop-model').replaceChildren(preview);
+
+  function feedback(type,message){
+    status.dataset.feedback=type;
+    if(status.textContent!==message)status.textContent=message;
   }
-  function resize(){const r=canvas.getBoundingClientRect();width=Math.max(1,r.width);height=Math.max(1,r.height);const dpr=Math.min(devicePixelRatio,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);unit=Math.min(width/11.4,(height-35)/7.6);originX=width/2;originY=height-22;kick();}
+  function guide(){feedback('ready',exhibitParts[model.selected].guide);}
+  function update(){
+    const {selected,complete,count}=model;
+    ending=false;
+    steps.forEach((step,index)=>{
+      const placed=index<count,current=!complete&&index===selected;
+      step.dataset.state=placed?'placed':current?'current':'waiting';
+      if(current)step.setAttribute('aria-current','step');else step.removeAttribute('aria-current');
+      step.querySelector('small').textContent=placed?'완료':current?'조립 중':'';
+    });
+    $('workshop-assembly').hidden=complete;
+    $('workshop-completion').hidden=!complete;
+    $('return-to-exhibition').hidden=!complete;
+    gravityToggle.closest('label').hidden=complete;
+    undoButton.disabled=count===0;
+    resetButton.disabled=count===0;
+    placeButton.textContent=pieces[selected].name+' 놓기';
+    const part=exhibitParts[selected];
+    exhibit.dataset.part=complete?'whole':part.id;
+    $('workshop-exhibit-title').textContent=complete?'한글 건축관 완성 모형':part.room+' · '+pieces[selected].char+' '+pieces[selected].name;
+    $('workshop-exhibit-detail').textContent=complete?'ㄱ의 기둥과 처마에 입구, 지붕, 창이 더해졌습니다.':part.detail;
+    if(active&&!complete)resize();
+  }
+  function afterPlacement(index){
+    update();
+    if(model.complete){
+      feedback('placed','한 채의 집이 완성됐어요.');
+      $('workshop-complete-title').focus({preventScroll:true});
+      $('workshop-dialog').scrollTop=0;
+      return;
+    }
+    feedback('placed',exhibitParts[index].object+' 놓았어요. 다음은 '+pieces[model.selected].name+'입니다.');
+  }
+  function resize(){
+    const rect=canvas.getBoundingClientRect();
+    if(!rect.width||rect.height<=45)return;
+    width=rect.width;
+    height=rect.height;
+    const dpr=Math.min(devicePixelRatio,2);
+    canvas.width=Math.round(width*dpr);
+    canvas.height=Math.round(height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    unit=Math.min(width/10.8,(height-45)/5.5);
+    originX=width/2;
+    originY=(height+4.8*unit)/2+9;
+    kick();
+  }
   function shape(index){
     ctx.beginPath();
     if(index===0){ctx.rect(-1.45,-1.35,2.9,2.7);ctx.rect(-1.1,-1,2.2,2);}
@@ -24,32 +89,189 @@ export function createWorkshop() {
     if(index===2){ctx.arc(0,0,1.08,0,Math.PI*2);ctx.moveTo(.74,0);ctx.arc(0,0,.74,0,Math.PI*2,true);}
   }
   function draw(){
-    ctx.clearRect(0,0,width,height);ctx.fillStyle='#11120f';ctx.fillRect(0,0,width,height);
-    ctx.strokeStyle='#a39984';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(10,originY-.12*unit);ctx.lineTo(width-10,originY-.12*unit);ctx.stroke();
-    pieces.forEach((piece,i)=>{if(model.bodies[i].userData.placed)return;ctx.save();ctx.translate(originX+piece.target[0]*unit,originY-piece.target[1]*unit);ctx.scale(unit,-unit);ctx.strokeStyle=i===model.selected?'#dfbf88':'#908772';ctx.lineWidth=1.5/unit;ctx.setLineDash([5/unit,4/unit]);shape(i);ctx.stroke();ctx.restore();});
-    model.bodies.forEach((body,i)=>{ctx.save();ctx.translate(originX+body.position.x*unit,originY-body.position.y*unit);const a=2*Math.atan2(body.quaternion.z,body.quaternion.w);ctx.rotate(-a);ctx.scale(unit,-unit);ctx.fillStyle=pieces[i].color;ctx.strokeStyle=i===model.selected?'#f4e4c5':'#736247';ctx.lineWidth=(i===model.selected?2:1)/unit;ctx.shadowColor='#0007';ctx.shadowBlur=10;ctx.shadowOffsetX=2;ctx.shadowOffsetY=5;shape(i);ctx.fill('evenodd');ctx.shadowColor='transparent';ctx.stroke();ctx.restore();});
+    if(model.complete)return;
+    const index=model.selected,piece=pieces[index],body=model.bodies[index];
+    ctx.clearRect(0,0,width,height);
+    const pitch=unit/2;
+    ctx.beginPath();
+    ctx.strokeStyle='#c3a77916';
+    ctx.lineWidth=1;
+    for(let x=originX%pitch;x<width;x+=pitch){ctx.moveTo(x,0);ctx.lineTo(x,height);}
+    for(let y=(originY-.12*unit)%pitch;y<height;y+=pitch){ctx.moveTo(0,y);ctx.lineTo(width,y);}
+    ctx.stroke();
+    ctx.strokeStyle='#716652';ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(12,originY-.12*unit);ctx.lineTo(width-12,originY-.12*unit);
+    ctx.moveTo(originX+2.05*unit,9);ctx.lineTo(originX+2.05*unit,32);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(originX+piece.target[0]*unit,originY-piece.target[1]*unit);
+    ctx.scale(unit,-unit);
+    ctx.strokeStyle=aligned?'#f6e8bf':'#c7a974';
+    ctx.lineWidth=(aligned?3:1.5)/unit;
+    ctx.setLineDash(aligned?[]:[5/unit,4/unit]);
+    shape(index);
+    if(aligned){ctx.fillStyle='#d7b97144';ctx.fill('evenodd');}
+    ctx.stroke();
+    ctx.restore();
+
+    model.bodies.forEach((entry,i)=>{
+      if(i!==index&&!entry.userData.placed)return;
+      ctx.save();
+      ctx.translate(originX+entry.position.x*unit,originY-entry.position.y*unit);
+      ctx.rotate(-2*Math.atan2(entry.quaternion.z,entry.quaternion.w));
+      ctx.scale(unit,-unit);
+      const pigment=ctx.createLinearGradient(-1,-1,1,1);
+      pigment.addColorStop(0,pieces[i].color);
+      pigment.addColorStop(1,pieceShades[i]);
+      ctx.fillStyle=pigment;
+      ctx.strokeStyle=i===index?'#f4e4c5':'#a18b66';
+      ctx.lineWidth=(i===index?1.5:1)/unit;
+      ctx.shadowColor='#0007';ctx.shadowBlur=8;ctx.shadowOffsetX=2;ctx.shadowOffsetY=4;
+      shape(i);
+      ctx.fill('evenodd');
+      ctx.shadowColor='transparent';
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    grip.style.left=originX+body.position.x*unit+'px';
+    grip.style.top=originY-body.position.y*unit+'px';
+    grip.style.width=Math.max(44,piece.width*unit)+'px';
+    grip.style.height=Math.max(44,piece.height*unit)+'px';
   }
-  function tick(time){frame=0;if(!active)return;const dt=last?Math.min(.06,(time-last)/1000):1/90;last=time;model.step(dt);draw();if(model.moving())kick();}
+  function tick(time){
+    frame=0;
+    if(!active)return;
+    if(model.complete){
+      if(ending){
+        ending=false;
+        afterPlacement(model.selected);
+      }
+      return;
+    }
+    const dt=last?Math.min(.06,(time-last)/1000):1/90;
+    last=time;
+    model.step(dt);
+    draw();
+    if(model.moving())kick();
+  }
   function kick(){if(active&&!document.hidden&&!frame)frame=requestAnimationFrame(tick);}
-  function point(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left-originX)/unit,y:(originY-(e.clientY-r.top))/unit};}
-  function pick(p){
-    for(let i=model.bodies.length-1;i>=0;i--){const b=model.bodies[i];if(b.userData.placed)continue;const angle=2*Math.atan2(b.quaternion.z,b.quaternion.w),dx=p.x-b.position.x,dy=p.y-b.position.y;const x=Math.cos(angle)*dx+Math.sin(angle)*dy,y=-Math.sin(angle)*dx+Math.cos(angle)*dy;if(Math.abs(x)<pieces[i].width/2+.15&&Math.abs(y)<pieces[i].height/2+.15)return i;}
-    return -1;
+  function point(event){
+    const rect=canvas.getBoundingClientRect();
+    return {x:(event.clientX-rect.left-originX)/unit,y:(originY-(event.clientY-rect.top))/unit};
   }
-  function release(snap=true){const id=pointer;pointer=null;model.endDrag(snap);if(id!==null&&canvas.hasPointerCapture?.(id))canvas.releasePointerCapture(id);kick();}
-  canvas.addEventListener('pointerdown',e=>{if(pointer!==null||e.button>0)return;const p=point(e),index=pick(p);if(index<0)return;e.preventDefault();if(model.beginDrag(index,p.x,p.y)){pointer=e.pointerId;canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});kick();}},options);
-  canvas.addEventListener('pointermove',e=>{if(e.pointerId!==pointer)return;e.preventDefault();const p=point(e);model.dragTo(p.x,p.y);kick();},options);
-  canvas.addEventListener('pointerup',e=>{if(e.pointerId===pointer)release(true);},options);
-  canvas.addEventListener('pointercancel',e=>{if(e.pointerId===pointer)release(false);},options);
-  canvas.addEventListener('lostpointercapture',e=>{if(e.pointerId===pointer)release(false);},options);
-  addEventListener('blur',()=>release(false),options);
-  canvas.addEventListener('keydown',e=>{if(['1','2','3'].includes(e.key)){e.preventDefault();model.select(Number(e.key)-1);}if(e.key==='Enter'||e.key===' '){e.preventDefault();model.place();kick();}},options);
-  document.querySelectorAll('[data-piece]').forEach((b,i)=>b.addEventListener('click',()=>model.select(i),options));
-  $('place-piece').addEventListener('click',()=>{model.place();kick();},options);
-  $('reset-workshop').addEventListener('click',()=>{release(false);model.reset();kick();},options);
-  $('gravity-toggle').addEventListener('change',e=>{model.setGravity(e.target.checked);kick();},options);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(frame)cancelAnimationFrame(frame);frame=0;last=0;release(false);}else if(active)kick();},options);
-  const observer=new ResizeObserver(resize);observer.observe(canvas);
-  $('workshop-loading').hidden=true;update();
-  return {open(){active=true;last=0;resize();kick();},pause(){active=false;if(frame)cancelAnimationFrame(frame);frame=0;last=0;release(false);},dispose(){active=false;if(frame)cancelAnimationFrame(frame);release(false);observer.disconnect();events.abort();},model};
+  function dropPosition(event){
+    const p=point(event);
+    return {x:p.x+drag.offsetX,y:p.y+drag.offsetY};
+  }
+  function release(event){
+    if(!drag)return;
+    const {id,surface}=drag,index=model.selected;
+    const position=event?dropPosition(event):undefined;
+    drag=null;
+    aligned=false;
+    const placed=model.endDrag(!!event,position);
+    if(surface.hasPointerCapture(id))surface.releasePointerCapture(id);
+    if(placed){
+      // Keep the touch target mounted until the browser finishes the drop gesture.
+      if(model.complete&&event.pointerType==='touch')ending=true;
+      else afterPlacement(index);
+    }
+    else if(event)feedback('retry','윤곽에 닿지 않았어요. 조각을 다시 끌어보세요.');
+    else guide();
+    kick();
+  }
+  function begin(event){
+    if(!active||model.complete||drag||event.button>0)return;
+    if(event.pointerType==='touch'&&event.target!==grip)return;
+    const p=point(event),index=model.selected,body=model.bodies[index];
+    const angle=2*Math.atan2(body.quaternion.z,body.quaternion.w);
+    const dx=p.x-body.position.x,dy=p.y-body.position.y;
+    const x=Math.cos(angle)*dx+Math.sin(angle)*dy,y=-Math.sin(angle)*dx+Math.cos(angle)*dy;
+    if(event.target!==grip&&(Math.abs(x)>pieces[index].width/2+.15||Math.abs(y)>pieces[index].height/2+.15))return;
+    if(!model.beginDrag(index,p.x,p.y))return;
+    if(event.pointerType!=='touch')event.preventDefault();
+    const surface=event.currentTarget;
+    drag={id:event.pointerId,surface,offsetX:-dx,offsetY:-dy};
+    surface.setPointerCapture(event.pointerId);
+    guide();
+    kick();
+  }
+  function move(event){
+    if(event.pointerId!==drag?.id)return;
+    const p=point(event);
+    model.dragTo(p.x,p.y);
+    const near=model.isNearTarget(model.selected,dropPosition(event));
+    if(near!==aligned){
+      aligned=near;
+      if(near)feedback('aligned','자리가 맞았어요. 조각을 놓아보세요.');
+      else guide();
+    }
+    kick();
+  }
+  function end(event){if(event.pointerId===drag?.id)release(event);}
+  function cancel(event){if(event.pointerId===drag?.id)release();}
+  for(const surface of [canvas,grip]){
+    surface.addEventListener('pointerdown',begin,options);
+    surface.addEventListener('pointermove',move,options);
+    surface.addEventListener('pointerup',end,options);
+    surface.addEventListener('pointercancel',cancel,options);
+    surface.addEventListener('lostpointercapture',cancel,options);
+  }
+  addEventListener('blur',()=>release(),options);
+  function placeCurrent(){
+    release();
+    const index=model.selected;
+    if(model.place())afterPlacement(index);
+  }
+  canvas.addEventListener('keydown',event=>{
+    if(event.key!=='Enter'&&event.key!==' ')return;
+    event.preventDefault();
+    if(!event.repeat)placeCurrent();
+  },options);
+  placeButton.addEventListener('click',placeCurrent,options);
+  undoButton.addEventListener('click',()=>{
+    release();
+    if(!model.undo())return;
+    update();
+    placeButton.focus();
+    feedback('ready',exhibitParts[model.selected].object+' 작업대로 돌려놓았어요.');
+  },options);
+  resetButton.addEventListener('click',()=>{
+    release();
+    model.reset();
+    update();
+    placeButton.focus({preventScroll:true});
+    $('workshop-dialog').scrollTop=0;
+    guide();
+  },options);
+  gravityToggle.checked=false;
+  gravityToggle.addEventListener('change',event=>{
+    release();
+    model.setGravity(event.target.checked);
+  },options);
+  $('return-to-exhibition').addEventListener('click',()=>$('workshop-dialog').close(),options);
+  function stop(){
+    if(frame)cancelAnimationFrame(frame);
+    frame=0;
+    last=0;
+    release();
+  }
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)stop();else kick();
+  },options);
+  const observer=new ResizeObserver(resize);
+  observer.observe(canvas);
+  $('workshop-loading').hidden=true;
+  $('workshop-layout').hidden=false;
+  update();
+  guide();
+  return {
+    open(){active=true;last=0;resize();kick();},
+    pause(){active=false;stop();},
+    dispose(){active=false;stop();observer.disconnect();events.abort();},
+    model
+  };
 }

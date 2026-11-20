@@ -89,6 +89,7 @@ document.documentElement.dataset.view='loading';
 <button type="button" data-stop="6" aria-label="고요의 방, 시옷">ㅅ</button>
 <button type="button" data-stop="7" aria-label="관람 마무리와 한글 작업실">짓기</button>
 </nav><div class="journey-status"><span id="view-label">한글 건축관</span><output id="tour-progress" aria-live="off" aria-label="관람 진행률">0%</output></div>
+<button class="mobile-workshop-link" id="mobile-workshop" type="button" data-open-workshop aria-haspopup="dialog" aria-controls="workshop-dialog" hidden>직접 짓기</button>
 </footer></div>
 <div class="scroll-track" id="journey" aria-hidden="true"></div>
 <section class="text-tour" id="text-tour" aria-labelledby="text-tour-title">
@@ -414,13 +415,47 @@ document.documentElement.dataset.view='loading';
   </div>
 </dialog>
 <dialog class="workshop-dialog" id="workshop-dialog" aria-labelledby="workshop-title">
-<div class="workshop-heading"><div><h2 id="workshop-title">한글로 집 짓기</h2><p>ㅁ은 입구, ㅅ은 지붕, ㅇ은 창이 됩니다.</p></div><button class="dialog-close" id="workshop-close" type="button" aria-label="작업실 닫고 전시로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-<p id="workshop-hint">조각을 끌어 윤곽에 맞춰보세요. 글자를 선택한 뒤 ‘맞춰 놓기’를 눌러도 됩니다.</p>
-<div class="workshop-board"><canvas id="workshop-canvas" tabindex="0" aria-label="중력과 충돌이 적용되는 한글 조립 작업대" aria-describedby="workshop-hint workshop-status"></canvas><p id="workshop-loading" role="status">글자 조각을 준비하고 있습니다.</p></div>
-<p class="workshop-status" id="workshop-status" role="status" aria-live="polite">세 조각으로 집을 완성해보세요.</p>
-<div class="workshop-tools"><div class="piece-buttons" role="group" aria-label="조립할 글자 선택"><button type="button" data-piece="0" aria-pressed="true">ㅁ 입구</button><button type="button" data-piece="1" aria-pressed="false">ㅅ 지붕</button><button type="button" data-piece="2" aria-pressed="false">ㅇ 창</button></div><button class="place-button" id="place-piece" type="button" disabled>맞춰 놓기</button></div>
-<div class="workshop-options"><label><input type="checkbox" id="gravity-toggle" checked> 중력 켜기</label><button type="button" id="reset-workshop">다시 짓기</button><button type="button" id="retry-workshop" hidden>작업실 다시 열기</button></div>
-<p class="workshop-note">가벼운 나무, 단단한 돌, 묵직한 황동. 충돌과 탄성은 가상 물성입니다. 키보드는 1·2·3으로 선택, Enter로 배치합니다.</p></dialog>
+  <header class="workshop-heading">
+    <h2 id="workshop-title">한글로 집 짓기</h2>
+    <button class="dialog-close" id="workshop-close" type="button" aria-label="작업실 닫고 전시로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  </header>
+  <p id="workshop-loading" role="status">글자 조각을 준비하고 있습니다.</p>
+  <button class="workshop-secondary" type="button" id="retry-workshop" hidden>작업실 다시 열기</button>
+  <div class="workshop-layout" id="workshop-layout" hidden>
+    <section id="workshop-assembly" aria-label="한글 조립 작업대">
+      <ol class="workshop-steps" aria-label="조립 순서">
+        <li data-workshop-step><span>ㅁ</span> 입구 <small></small></li>
+        <li data-workshop-step><span>ㅅ</span> 지붕 <small></small></li>
+        <li data-workshop-step><span>ㅇ</span> 창 <small></small></li>
+      </ol>
+      <div class="workshop-board">
+        <div class="workshop-board-labels" aria-hidden="true"><span>놓을 자리</span><span>이번 조각</span></div>
+        <canvas id="workshop-canvas" role="img" tabindex="0" aria-label="조립 작업대의 조각과 배치 윤곽" aria-describedby="workshop-hint" aria-keyshortcuts="Enter Space"></canvas>
+        <span class="workshop-grip" id="workshop-grip" aria-hidden="true"></span>
+      </div>
+      <p id="workshop-hint">윤곽에 끌어 놓거나 버튼을 누르세요.</p>
+      <p class="workshop-status" id="workshop-status" role="status" aria-atomic="true"></p>
+      <button class="place-button" id="place-piece" type="button">입구 놓기</button>
+    </section>
+    <section id="workshop-completion" class="workshop-completion" hidden>
+      <h3 id="workshop-complete-title" tabindex="-1">한 채의 집이 완성됐어요.</h3>
+      <p>ㅁ으로 들어가 ㅅ 아래 머물고, ㅇ 너머로 풍경을 봅니다.</p>
+    </section>
+    <figure id="workshop-exhibit" class="workshop-exhibit" data-part="mieum">
+      <div id="workshop-model"></div>
+      <figcaption>
+        <h3 id="workshop-exhibit-title"></h3>
+        <p id="workshop-exhibit-detail"></p>
+      </figcaption>
+    </figure>
+    <button class="place-button" id="return-to-exhibition" type="button" hidden>전시로 돌아가기</button>
+    <div class="workshop-options">
+      <label><input type="checkbox" id="gravity-toggle"> 중력 켜기</label>
+      <button class="workshop-secondary" type="button" id="undo-workshop" disabled>한 단계 되돌리기</button>
+      <button class="workshop-secondary" type="button" id="reset-workshop" disabled>다시 짓기</button>
+    </div>
+  </div>
+</dialog>
 <noscript><style>.load-status{display:none}</style><p class="no-script-note">현재 이미지와 글로 읽는 전시입니다. JavaScript를 켜면 관람 방식 선택과 한글 작업실을 이용할 수 있습니다.</p></noscript>
 <script type="module">
 document.getElementById('experience').inert=true;

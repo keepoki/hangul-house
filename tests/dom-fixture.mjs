@@ -13,8 +13,8 @@ export function fixture(){
   const groups={
     '[data-stop]':Array.from({length:8},(_,i)=>{const e=$('stop-'+i);e.dataset.stop=String(i);return e;}),
     '[data-goto]':[0,.13].map((p,i)=>{const e=$('goto-'+i);e.dataset.goto=String(p);return e;}),
-    '[data-piece]':Array.from({length:3},(_,i)=>{const e=$('piece-'+i);e.dataset.piece=String(i);return e;}),
-    '[data-open-workshop]':[$('open-workshop'),$('story-action'),$('text-workshop')],
+    '[data-workshop-step]':Array.from({length:3},(_,i)=>{const step=$('workshop-step-'+i);step.querySelector=()=>$(step.id+'-status');return step;}),
+    '[data-open-workshop]':[$('open-workshop'),$('mobile-workshop'),$('story-action'),$('text-workshop')],
     '[data-open-structure]':[$('structure-action'),$('text-structure')],
     '[data-structure-part]':['giyeok','mieum','siot','ieung'].map(part=>{const button=$('part-'+part);button.dataset.structurePart=part;return button;}),
     '[data-show-text]':[$('show-text')],
@@ -23,6 +23,11 @@ export function fixture(){
     '[data-viewing-choice]':[$('retry-3d')]
   };
   $('retry-3d').dataset.viewingChoice='3d';
+  $('gravity-toggle').closest=()=>$('gravity-label');
+  $('#structure-figure .structure-model').cloneNode=()=>({
+    getAttribute:()=> 'house-model-title house-model-description',
+    setAttribute(){},querySelector:selector=>$(selector),querySelectorAll:()=>[]
+  });
   const ctx=new Proxy({},{get:(t,p)=>t[p]??(()=>{}),set:(t,p,v)=>(t[p]=v,true)});
   $('workshop-canvas').getContext=()=>ctx;$('workshop-canvas').tagName='CANVAS';
   const document=new EventTarget();Object.assign(document,{getElementById:$,querySelector:s=>$(s),querySelectorAll:s=>groups[s]??[],body:$('body'),documentElement:{dataset:{view:'static',state:'loading'}},createElement:tag=>new Element(tag),hidden:false});
