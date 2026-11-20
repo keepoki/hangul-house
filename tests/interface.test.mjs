@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {fixture} from './dom-fixture.mjs';
+import {chapters} from '../dist/exhibition-content.js';
 const original=await readFile(new URL('../dist/interface.js',import.meta.url),'utf8');
 function boot(options,{readFirst=false}={}){
   const f=fixture(),calls=[];
+  f.$('viewing-menu').querySelector=()=>f.$('viewing-menu-summary');
   if(readFirst)f.document.documentElement.dataset.readFirst='true';
   const workshop={open(){calls.push('workshop-open');},pause(){calls.push('workshop-pause');}};
   const source=original.replace(/^export\s+/gm,'').replace("import('./workshop.js')",'Promise.resolve({createWorkshop:()=>fakeWorkshop})');
@@ -47,6 +49,7 @@ test('manual viewing choices close the menu and the remembered mode is reflected
   const choices=[],{f,ui}=boot({onModeChange:value=>choices.push(value)});
   f.$('viewing-menu').open=true;const images=f.$('mode-images');images.checked=true;f.fire(images,'change');
   assert.deepEqual(choices,['images']);assert.equal(f.$('viewing-menu').open,false);
+  assert.equal(f.$('viewing-menu-summary').focused,true);
   ui.setViewingState({preference:'images',active:'images',status:'이미지 관람'});
   assert.equal(f.$('mode-images').checked,true);assert.equal(f.$('mode-auto').checked,false);assert.equal(f.$('viewing-current').textContent,'이미지');
 });
@@ -68,6 +71,22 @@ test('the interface preserves a text tour opened before its module loaded',()=>{
   ui.attach(controller,{view:'images'});
   assert.equal(f.document.documentElement.dataset.view,'static');
   assert.equal(f.$('resume-gallery').hidden,false);
+});
+test('the text tour names the previous viewing mode on its return button',()=>{
+  for(const [view,mode] of [['images','이미지'],['3d','3D']]){
+    const {f,ui,controller}=boot();
+    ui.attach(controller,{view});
+    f.fire(f.groups['[data-show-text]'][0],'click');
+    assert.equal(f.$('resume-gallery').textContent,mode+' 관람으로 돌아가기');
+    f.fire(f.$('resume-gallery'),'click');
+    assert.equal(f.document.documentElement.dataset.view,view);
+  }
+});
+test('gallery copy retains a space where mobile hides the line break',()=>{
+  for(const {title,body} of chapters){
+    assert.doesNotMatch(title,/<br>\S/);
+    assert.doesNotMatch(body,/<br>\S/);
+  }
 });
 test('the workshop opens within the page and restores focus and scrolling when closed',async()=>{
   const {f,calls,ui,controller}=boot();ui.attach(controller);f.document.body.style.overflow='auto';const opener=f.$('open-workshop');

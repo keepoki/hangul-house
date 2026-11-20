@@ -62,7 +62,7 @@ document.addEventListener('click',event=>{
 <h2>천천히, 가까이.</h2>
 <p>스크롤하면 전시 구역 사이를 이동하고, 각 글자의 눈높이까지 다가갑니다. 위로 스크롤하면 되짚어 볼 수 있어요.</p>
 <p>아래 글자를 누르거나 작품을 클릭하면 바로 가까이 볼 수 있습니다. 확대는 +·− 버튼, 키보드는 +·−·0을 사용하세요.</p>
-<p>‘직접 짓기’에서는 글자 조각을 끌어 집을 만듭니다. 드래그 대신 조각을 선택하고 ‘맞춰 놓기’를 눌러도 됩니다.</p>
+<p>‘직접 짓기’에서는 조각을 윤곽에 끌어 놓거나 ‘입구 놓기’, ‘지붕 놓기’, ‘창 놓기’ 버튼을 눌러 집을 짓습니다.</p>
 <button class="text-link" type="button" data-show-text>전시를 글로 읽기</button>
 <a class="text-link" href="#credits" data-credits>제작 정보와 라이선스</a>
 </div></details>
@@ -86,8 +86,8 @@ document.addEventListener('click',event=>{
 <div class="vignette" aria-hidden="true"></div>
 <main class="story" aria-live="polite" aria-atomic="true">
 <div class="story-copy" tabindex="0">
-<h1 id="story-title">한글의 선으로<br>공간을 짓다.</h1>
-<p class="story-body" id="story-body">ㄱ은 기둥과 처마로, ㅅ은 지붕으로.<br>익숙한 글자가 건축이 되는 전시입니다.</p>
+<h1 id="story-title">한글의 선으로<br> 공간을 짓다.</h1>
+<p class="story-body" id="story-body">ㄱ은 기둥과 처마로, ㅅ은 지붕으로.<br> 익숙한 글자가 건축이 되는 전시입니다.</p>
 <p class="room-context" id="room-context">한글 건축관</p>
 <p class="story-note" id="story-note">아래로 스크롤해 여섯 공간을 만나보세요.</p>
 </div>
@@ -112,7 +112,7 @@ document.addEventListener('click',event=>{
 </footer></div>
 <div class="scroll-track" id="journey" aria-hidden="true"></div>
 <section class="text-tour" id="text-tour" aria-labelledby="text-tour-title">
-<div class="text-tour-heading"><h2 id="text-tour-title">선에서 공간으로.</h2><p>스크롤로 만나는 여섯 개의 전시 공간입니다. 3D를 열 수 없어도 글자의 형태와 전시의 의미를 읽을 수 있습니다.</p><button class="structure-entry" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button><button type="button" class="resume-button" id="resume-gallery" hidden>3D 관람으로 돌아가기</button></div>
+<div class="text-tour-heading"><h2 id="text-tour-title">선에서 공간으로.</h2><p>스크롤로 만나는 여섯 개의 전시 공간입니다. 3D를 열 수 없어도 글자의 형태와 전시의 의미를 읽을 수 있습니다.</p><button class="structure-entry" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button><button type="button" class="resume-button" id="resume-gallery" hidden>전시 관람으로 돌아가기</button></div>
 <section class="text-room" id="room-stone"><span class="text-glyph" aria-hidden="true">ㄱ</span><div><h3>돌의 방</h3><p>ㄱ의 가로선은 처마가 되고, 세로선은 그 아래의 공간을 받칩니다. 석회암의 무게와 선의 방향을 함께 감상합니다.</p></div></section>
 <section class="text-room" id="room-water"><span class="text-glyph" aria-hidden="true">ㅇ</span><div><h3>물의 뜰</h3><p>ㅇ의 가운데를 비우자 창이 생깁니다. 청동의 둥근 틈 너머로 물과 빛이 이어지고, 비워 둔 곳에 풍경이 담깁니다.</p></div></section>
 <section class="text-room" id="room-wood"><span class="text-glyph" aria-hidden="true">ㅁ</span><div><h3>나무의 뜰</h3><p>ㅁ의 네 방향이 하나의 방을 만듭니다. 가운데를 열면 누구나 드나드는 입구가 됩니다. 닫힌 글자가 열린 공간으로 바뀝니다.</p></div></section>
