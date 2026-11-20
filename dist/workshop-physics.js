@@ -11,6 +11,13 @@ export function createWorkshopWorld({gravity=true,assembly=false,onChange=()=>{}
   world.solver.iterations=16;world.defaultContactMaterial.friction=.58;world.defaultContactMaterial.restitution=.16;
   const floor=new CANNON.Body({mass:0,shape:new CANNON.Plane()});floor.quaternion.setFromEuler(-Math.PI/2,0,0);floor.position.y=.12;world.addBody(floor);
   for(const x of [-5.6,5.6]){const wall=new CANNON.Body({mass:0,shape:new CANNON.Box(new CANNON.Vec3(.2,5,1))});wall.position.set(x,4,0);world.addBody(wall);}
+  const dropTray={x:3.15,y:.34,width:3.9,height:.44};
+  const support=assembly?new CANNON.Body({
+    mass:0,collisionFilterMask:0,
+    position:new CANNON.Vec3(dropTray.x,dropTray.y,0),
+    shape:new CANNON.Box(new CANNON.Vec3(dropTray.width/2,dropTray.height/2,.65))
+  }):null;
+  if(support)world.addBody(support);
   function addBar(body,width,height,x=0,y=0,angle=0){
     const q=new CANNON.Quaternion();q.setFromEuler(0,0,angle);
     body.addShape(new CANNON.Box(new CANNON.Vec3(width/2,height/2,.2)),new CANNON.Vec3(x,y,0),q);
@@ -24,7 +31,12 @@ export function createWorkshopWorld({gravity=true,assembly=false,onChange=()=>{}
     world.addBody(body);return body;
   });
   const mouse=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,collisionFilterGroup:0,collisionFilterMask:0});world.addBody(mouse);
-  let constraint=null,dragging=-1,selected=0;
+  let constraint=null,dragging=-1,selected=0,drop=null;
+  if(support)for(const body of bodies){
+    body.addEventListener('collide',event=>{
+      if(drop?.index===body.userData.index&&drop.phase==='falling'&&event.body===support)drop.phase='contact';
+    });
+  }
   function stage(index,available){
     const body=bodies[index];
     body.type=CANNON.Body.DYNAMIC;body.mass=pieces[index].mass;body.updateMassProperties();
@@ -35,6 +47,7 @@ export function createWorkshopWorld({gravity=true,assembly=false,onChange=()=>{}
     if(available)body.wakeUp();else body.sleep();
   }
   function reset(){
+    stopDrop();
     endDrag(false);
     selected=0;
     bodies.forEach((_,index)=>stage(index,!assembly||index===0));
@@ -42,6 +55,7 @@ export function createWorkshopWorld({gravity=true,assembly=false,onChange=()=>{}
   }
   function place(index=selected){
     const body=bodies[index];if(!body||body.userData.placed||(assembly&&index!==selected))return false;
+    stopDrop();
     if(dragging===index)endDrag(false);
     body.position.set(...pieces[index].target,0);body.quaternion.set(0,0,0,1);body.velocity.setZero();body.angularVelocity.setZero();body.force.setZero();body.torque.setZero();body.type=CANNON.Body.STATIC;body.mass=0;body.updateMassProperties();body.aabbNeedsUpdate=true;body.userData.placed=true;body.sleep();
     const next=bodies.findIndex(b=>!b.userData.placed);
@@ -55,6 +69,7 @@ export function createWorkshopWorld({gravity=true,assembly=false,onChange=()=>{}
   function undo(){
     const previous=bodies.findLastIndex(body=>body.userData.placed);
     if(!assembly||previous<0)return false;
+    stopDrop();
     endDrag(false);
     if(!bodies[selected].userData.placed)stage(selected,false);
     selected=previous;
@@ -62,7 +77,8 @@ export function createWorkshopWorld({gravity=true,assembly=false,onChange=()=>{}
     onChange();return true;
   }
   function beginDrag(index,x,y){
-    if(constraint||!bodies[index]||bodies[index].userData.placed||(assembly&&index!==selected))return false;
+    if(constraint||drop?.phase==='falling'||!bodies[index]||bodies[index].userData.placed||(assembly&&index!==selected))return false;
+    stopDrop();
     selected=index;dragging=index;const body=bodies[index];body.wakeUp();mouse.position.set(x,y,0);mouse.velocity.setZero();
     const local=body.pointToLocalFrame(mouse.position);constraint=new CANNON.PointToPointConstraint(body,local,mouse,new CANNON.Vec3(),1800);constraint.collideConnected=false;world.addConstraint(constraint);onChange();return true;
   }
@@ -79,9 +95,29 @@ export function createWorkshopWorld({gravity=true,assembly=false,onChange=()=>{}
     if(assembly)stage(index,true);
     onChange();return false;
   }
-  function setGravity(enabled){gravity=!!enabled;world.gravity.y=gravity?-9.82:0;bodies.filter(b=>!b.userData.placed&&b.collisionFilterMask).forEach(b=>{if(assembly)stage(b.userData.index,true);else{if(!gravity){b.velocity.setZero();b.angularVelocity.setZero();}b.wakeUp();}});onChange();}
+  function beginDrop(){
+    if(!support||constraint||drop?.phase==='falling'||bodies[selected].userData.placed)return false;
+    stage(selected,true);
+    const body=bodies[selected];
+    body.position.y=3.3;
+    body.quaternion.setFromEuler(0,0,-.13);
+    support.collisionFilterMask=-1;
+    world.gravity.y=-9.82;
+    drop={index:selected,phase:'falling'};
+    onChange();
+    return true;
+  }
+  function stopDrop(restage=false){
+    if(!drop)return;
+    const index=drop.index;
+    drop=null;
+    support.collisionFilterMask=0;
+    world.gravity.y=gravity?-9.82:0;
+    if(restage)stage(index,true);
+  }
+  function setGravity(enabled){stopDrop();gravity=!!enabled;world.gravity.y=gravity?-9.82:0;bodies.filter(b=>!b.userData.placed&&b.collisionFilterMask).forEach(b=>{if(assembly)stage(b.userData.index,true);else{if(!gravity){b.velocity.setZero();b.angularVelocity.setZero();}b.wakeUp();}});onChange();}
   function step(dt){world.step(1/90,Math.max(0,Math.min(dt,1/15)),6);}
   function moving(){return !!constraint||bodies.some(b=>b.type===CANNON.Body.DYNAMIC&&b.sleepState!==CANNON.Body.SLEEPING);}
   reset();
-  return {world,bodies,pieces,reset,place,select,undo,beginDrag,dragTo,isNearTarget,endDrag,setGravity,step,moving,get selected(){return selected;},get dragging(){return dragging;},get complete(){return bodies.every(b=>b.userData.placed);},get count(){return bodies.filter(b=>b.userData.placed).length;}};
+  return {world,bodies,pieces,dropTray,beginDrop,stopDrop,reset,place,select,undo,beginDrag,dragTo,isNearTarget,endDrag,setGravity,step,moving,get dropState(){return drop?.phase??'idle';},get selected(){return selected;},get dragging(){return dragging;},get complete(){return bodies.every(b=>b.userData.placed);},get count(){return bodies.filter(b=>b.userData.placed).length;}};
 }

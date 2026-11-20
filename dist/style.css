@@ -234,8 +234,11 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
   color: var(--paper);
   word-break: keep-all;
 }
-.workshop-status[data-feedback="aligned"], .workshop-status[data-feedback="placed"] { color: var(--gold); }
+.workshop-status[data-feedback="aligned"], .workshop-status[data-feedback="placed"], .workshop-status[data-feedback="contact"] { color: var(--gold); }
 .workshop-status[data-feedback="retry"] { color: #f0c7a6; }
+.workshop-placement { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#workshop-drop { min-height: 44px; padding: 5px 7px; border: 1px solid var(--line); font-size: 14px; word-break: keep-all; }
+#workshop-drop[aria-disabled="true"] { color: var(--muted); cursor: default; }
 .workshop-dialog .place-button {
   min-height: 48px;
   width: 100%;

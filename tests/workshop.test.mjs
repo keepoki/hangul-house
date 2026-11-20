@@ -4,10 +4,10 @@ import {readFile} from 'node:fs/promises';
 import {createWorkshopWorld,pieces} from '../dist/workshop-physics.js';
 import {fixture} from './dom-fixture.mjs';
 const source=(await readFile(new URL('../dist/workshop.js',import.meta.url),'utf8')).replace(/^import[^;]+;\s*/gm,'').replace(/^export\s+/gm,'');
-function boot(){
+function boot(reduced=false){
   const f=fixture();
   const create=new Function('createWorkshopWorld','pieces','document','matchMedia','devicePixelRatio','requestAnimationFrame','cancelAnimationFrame','ResizeObserver','addEventListener',source+'\nreturn createWorkshop();');
-  const workshop=create(createWorkshopWorld,pieces,f.document,()=>({matches:false}),1,f.raf,f.cancel,f.ResizeObserver,f.window.addEventListener.bind(f.window));
+  const workshop=create(createWorkshopWorld,pieces,f.document,()=>({matches:reduced}),1,f.raf,f.cancel,f.ResizeObserver,f.window.addEventListener.bind(f.window));
   workshop.open();const canvas=f.$('workshop-canvas'),unit=Math.min(600/10.8,355/5.5),originY=(400+4.8*unit)/2+9;
   function point(index){const body=workshop.model.bodies[index];return{clientX:300+body.position.x*unit,clientY:originY-body.position.y*unit};}
   return{f,workshop,canvas,point};
@@ -88,4 +88,16 @@ test('closing or hiding the workshop stops its render loop and clears gestures',
   f.document.hidden=true;f.fire(f.document,'visibilitychange');assert.equal(workshop.model.dragging,-1);assert.equal(f.frames.size,0);
   f.document.hidden=false;f.fire(f.document,'visibilitychange');assert.ok(f.frames.size>0);
   workshop.pause();assert.equal(f.frames.size,0);workshop.dispose();
+});
+test('reduced motion presents the contact result and leaves direct placement available',()=>{
+  const {f,workshop}=boot(true),drop=f.$('workshop-drop');
+  f.fire(drop,'click');
+  assert.equal(workshop.model.dropState,'contact');
+  assert.equal(f.$('workshop-status').dataset.feedback,'contact');
+  assert.match(f.$('workshop-status').textContent,/받침에 닿았어요/);
+  assert.equal(workshop.model.count,0);
+  f.fire(f.$('place-piece'),'click');
+  assert.equal(workshop.model.count,1);
+  assert.equal(workshop.model.dropState,'idle');
+  workshop.dispose();
 });

@@ -62,7 +62,7 @@ document.addEventListener('click',event=>{
 <h2>천천히, 가까이.</h2>
 <p>스크롤하면 전시 구역 사이를 이동하고, 각 글자의 눈높이까지 다가갑니다. 위로 스크롤하면 되짚어 볼 수 있어요.</p>
 <p>아래 글자를 누르거나 작품을 클릭하면 바로 가까이 볼 수 있습니다. 확대는 +·− 버튼, 키보드는 +·−·0을 사용하세요.</p>
-<p>‘직접 짓기’에서는 조각을 윤곽에 끌어 놓거나 ‘입구 놓기’, ‘지붕 놓기’, ‘창 놓기’ 버튼을 눌러 집을 짓습니다.</p>
+<p>‘직접 짓기’에서는 조각을 윤곽에 끌어 놓거나 ‘입구 놓기’, ‘지붕 놓기’, ‘창 놓기’ 버튼을 누르세요. ‘중력으로 놓아 보기’에서는 조각이 받침에 닿는 모습을 볼 수 있습니다.</p>
 <button class="text-link" type="button" data-show-text>전시를 글로 읽기</button>
 <a class="text-link" href="#credits" data-credits>제작 정보와 라이선스</a>
 </div></details>
@@ -451,13 +451,16 @@ document.addEventListener('click',event=>{
         <li data-workshop-step><span>ㅇ</span> 창 <small></small></li>
       </ol>
       <div class="workshop-board">
-        <div class="workshop-board-labels" aria-hidden="true"><span>놓을 자리</span><span>이번 조각</span></div>
+        <div class="workshop-board-labels" aria-hidden="true"><span>놓을 자리</span><span id="workshop-tray-label">이번 조각</span></div>
         <canvas id="workshop-canvas" role="img" tabindex="0" aria-label="조립 작업대의 조각과 배치 윤곽" aria-describedby="workshop-hint" aria-keyshortcuts="Enter Space"></canvas>
         <span class="workshop-grip" id="workshop-grip" aria-hidden="true"></span>
       </div>
       <p id="workshop-hint">윤곽에 끌어 놓거나 버튼을 누르세요.</p>
       <p class="workshop-status" id="workshop-status" role="status" aria-atomic="true"></p>
-      <button class="place-button" id="place-piece" type="button">입구 놓기</button>
+      <div class="workshop-placement">
+        <button class="place-button" id="place-piece" type="button">입구 놓기</button>
+        <button id="workshop-drop" type="button">중력으로 놓아 보기</button>
+      </div>
     </section>
     <section id="workshop-completion" class="workshop-completion" hidden>
       <h3 id="workshop-complete-title" tabindex="-1">한 채의 집이 완성됐어요.</h3>

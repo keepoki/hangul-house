@@ -8,6 +8,8 @@ export function createWorkshop() {
   const steps=[...document.querySelectorAll('[data-workshop-step]')];
   const exhibit=$('workshop-exhibit'),status=$('workshop-status'),placeButton=$('place-piece');
   const undoButton=$('undo-workshop'),resetButton=$('reset-workshop'),gravityToggle=$('gravity-toggle');
+  const dropButton=$('workshop-drop'),trayLabel=$('workshop-tray-label');
+  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const events=new AbortController(),options={signal:events.signal};
   const exhibitParts=[
     {id:'mieum',room:'나무의 뜰',object:'입구를',guide:'바닥에 네모난 입구를 세워보세요.',detail:'ㅁ의 네 획으로 드나들 수 있는 입구를 만듭니다.'},
@@ -16,6 +18,7 @@ export function createWorkshop() {
   ];
   const pieceShades=['#edc894','#f1e5cb','#e0bc76'];
   let active=false,frame=0,last=0,drag=null,aligned=false,ending=false;
+  let shownDrop;
   let width=600,height=400,unit=40,originX=300,originY=330;
   const model=createWorkshopWorld({gravity:false,assembly:true,onChange:kick});
 
@@ -36,9 +39,19 @@ export function createWorkshop() {
     if(status.textContent!==message)status.textContent=message;
   }
   function guide(){feedback('ready',exhibitParts[model.selected].guide);}
+  function updateDrop(){
+    const phase=model.dropState;
+    if(phase===shownDrop)return;
+    shownDrop=phase;
+    dropButton.setAttribute('aria-disabled',String(phase==='falling'));
+    trayLabel.textContent=phase==='idle'?'이번 조각':'낙하 실험';
+    if(phase==='falling')feedback('falling','조각이 받침을 향해 떨어집니다.');
+    if(phase==='contact')feedback('contact',pieces[model.selected].char+' 조각이 받침에 닿았어요. 이제 집에 놓아보세요.');
+  }
   function update(){
     const {selected,complete,count}=model;
     ending=false;
+    updateDrop();
     steps.forEach((step,index)=>{
       const placed=index<count,current=!complete&&index===selected;
       step.dataset.state=placed?'placed':current?'current':'waiting';
@@ -104,6 +117,15 @@ export function createWorkshop() {
     ctx.moveTo(12,originY-.12*unit);ctx.lineTo(width-12,originY-.12*unit);
     ctx.moveTo(originX+2.05*unit,9);ctx.lineTo(originX+2.05*unit,32);
     ctx.stroke();
+    if(model.dropState!=='idle'){
+      const tray=model.dropTray;
+      const left=originX+(tray.x-tray.width/2)*unit,top=originY-(tray.y+tray.height/2)*unit;
+      const span=tray.width*unit;
+      ctx.fillStyle='#514632';ctx.fillRect(left,top,span,tray.height*unit);
+      ctx.strokeStyle=model.dropState==='contact'?'#f6d795':'#a38e65';
+      ctx.lineWidth=model.dropState==='contact'?2.5:1;
+      ctx.beginPath();ctx.moveTo(left,top);ctx.lineTo(left+span,top);ctx.stroke();
+    }
 
     ctx.save();
     ctx.translate(originX+piece.target[0]*unit,originY-piece.target[1]*unit);
@@ -154,6 +176,7 @@ export function createWorkshop() {
     const dt=last?Math.min(.06,(time-last)/1000):1/90;
     last=time;
     model.step(dt);
+    updateDrop();
     draw();
     if(model.moving())kick();
   }
@@ -196,6 +219,7 @@ export function createWorkshop() {
     const surface=event.currentTarget;
     drag={id:event.pointerId,surface,offsetX:-dx,offsetY:-dy};
     surface.setPointerCapture(event.pointerId);
+    updateDrop();
     guide();
     kick();
   }
@@ -232,6 +256,11 @@ export function createWorkshop() {
     if(!event.repeat)placeCurrent();
   },options);
   placeButton.addEventListener('click',placeCurrent,options);
+  dropButton.addEventListener('click',()=>{
+    if(!active||!model.beginDrop())return;
+    if(reduceMotion.matches)for(let i=0;i<165;i++)model.step(1/90);
+    updateDrop();
+  },options);
   undoButton.addEventListener('click',()=>{
     release();
     if(!model.undo())return;
@@ -251,6 +280,8 @@ export function createWorkshop() {
   gravityToggle.addEventListener('change',event=>{
     release();
     model.setGravity(event.target.checked);
+    updateDrop();
+    guide();
   },options);
   $('return-to-exhibition').addEventListener('click',()=>$('workshop-dialog').close(),options);
   function stop(){
@@ -270,7 +301,10 @@ export function createWorkshop() {
   guide();
   return {
     open(){active=true;last=0;resize();kick();},
-    pause(){active=false;stop();},
+    pause(){
+      active=false;stop();
+      if(model.dropState!=='idle'){model.stopDrop(true);updateDrop();guide();}
+    },
     dispose(){active=false;stop();observer.disconnect();events.abort();},
     model
   };

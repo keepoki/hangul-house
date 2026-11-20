@@ -38,3 +38,30 @@ test('motion reduction can disable gravity without losing selection and placemen
   model.select(1);model.place();assert.equal(model.bodies[1].userData.placed,true);
   model.setGravity(true);assert.ok(model.world.gravity.y<0);model.setGravity(false);assert.equal(model.world.gravity.y,0);
 });
+test('the gravity demonstration produces real support contacts without placing pieces',()=>{
+  const model=createWorkshopWorld({gravity:false,assembly:true});
+  for(let index=0;index<pieces.length;index++){
+    assert.equal(model.beginDrop(),true);
+    assert.equal(model.dropState,'falling');
+    const body=model.bodies[index],start=body.position.y;
+    assert.equal(model.beginDrop(),false);
+    for(let i=0;i<165;i++)model.step(1/90);
+    assert.equal(model.dropState,'contact');
+    assert.ok(body.position.y<start-.5);
+    assert.ok(body.position.y>1.2);
+    assert.equal(model.count,index);
+    assert.equal(model.place(),true);
+    assert.equal(model.dropState,'idle');
+    assert.equal(model.world.gravity.y,0);
+  }
+  assert.equal(model.beginDrop(),false);
+});
+test('resetting an interrupted demonstration restores the selected gravity and stage',()=>{
+  const model=createWorkshopWorld({gravity:false,assembly:true});
+  const initial=model.bodies[0].position.toArray();
+  model.beginDrop();
+  model.reset();
+  assert.equal(model.dropState,'idle');
+  assert.equal(model.world.gravity.y,0);
+  assert.deepEqual(model.bodies[0].position.toArray(),initial);
+});
