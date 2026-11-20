@@ -26,8 +26,8 @@ const poses = [
   [.725, [-14,11,-27],  [-16,2.5,-15],36,0],
   detail(.765,5,-.8), detail(.815,5,.8,9.7),
   [.875, [-29,13,0],    [0,2.8,0],36,0],
-  [.935, [-27,16,18],   [0,2.8,0],36,0],
-  [1,    [-19,13.5,29], [0,2.8,0],36,0]
+  [.935, [-22,10.2,25], [0,3.05,0],36,0],
+  [1,    [0,4.45,28],   [0,3.15,0],34,0]
 ];
 const mix = (a,b,t) => a+(b-a)*t;
 const smootherstep = t => t*t*t*(t*(t*6-15)+10);
@@ -47,7 +47,8 @@ export function chapterAt(progress) {
 }
 export function sampleTour(progress, {mobile=false, reducedMotion=false, zoom=1}={}) {
   const raw=Math.min(1,Math.max(0,progress));
-  const p=reducedMotion?tourStops[chapterAt(raw)]:raw;
+  const chapter=chapterAt(raw);
+  const p=reducedMotion?tourStops[chapter]:raw;
   let i=0;
   while(i<poses.length-2&&p>poses[i+1][0])i++;
   const a=poses[i],b=poses[i+1];
@@ -57,7 +58,9 @@ export function sampleTour(progress, {mobile=false, reducedMotion=false, zoom=1}
   const focus=mix(a[4],b[4],t);
   const distanceScale=(mobile?mix(.9,1.03,focus):1)/Math.min(1.8,Math.max(.75,zoom));
   for(let j=0;j<3;j++)position[j]=target[j]+(position[j]-target[j])*distanceScale;
-  return {position,target,fov:mix(a[3],b[3],t)+(mobile?7*focus:0),focus,chapter:chapterAt(raw)};
+  // Keep the room label off the walk between close-ups, where other objects can fill the frame.
+  const story=chapter>0&&chapter<7&&focus<.65?null:chapter;
+  return {position,target,fov:mix(a[3],b[3],t)+(mobile?7*focus:0),focus,chapter,story};
 }
 
 // Fit the actual artwork bounds into the camera's usable viewport, before manual zoom.

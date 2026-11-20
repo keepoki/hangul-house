@@ -5,9 +5,10 @@ import * as Three from '../dist/assets/three.module.js';
 import { sampleTour, fitTourPose, chapterAt, tourStops as stops, tourGlyphs } from '../dist/camera-tour.js';
 import { exhibitionSites } from '../dist/exhibition-layout.js';
 import { buildHangulBuilding } from '../dist/hangul-building.js';
-import { chapters } from '../dist/exhibition-content.js';
+import { chapters, updateTourNavigation } from '../dist/exhibition-content.js';
 import { createEnvironment, createReflectingPool } from '../dist/environment.js';
 import { batchStaticBoxes, detailCount, pickVisibleArtwork } from '../dist/scene-quality.js';
+import { createPerformanceGovernor } from '../dist/adaptive-quality.js';
 
 // Construct the actual scene with a non-GPU renderer so camera framing can be checked.
 const source=(await readFile(new URL('../dist/gallery.js',import.meta.url),'utf8')).replace(/^import[^;]+;\s*/gm,'').replace(/^export\s+/gm,'');
@@ -20,16 +21,17 @@ function element(id='') {
 const context={createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){},fillRect(){},beginPath(){},moveTo(){},bezierCurveTo(){},stroke(){},fillText(){}};
 const canvas=()=>({width:0,height:0,getContext:()=>context});
 const document={getElementById:element,querySelector:element,querySelectorAll:()=>[],createElement:canvas,addEventListener(){},hidden:false,documentElement:{scrollHeight:6300,dataset:{view:'3d'}}};
+element('journey').offsetHeight=5400;
 let renderedScene,renderedCamera,lastScroll,clock=0,renderCount=0,initialFrame;
 class Renderer {
   constructor(){this.domElement=element('canvas');this.shadowMap={};}
-  setClearColor(){}setPixelRatio(){}setSize(){}
+  setClearColor(){}setPixelRatio(){}setSize(w,h){this.width=w;this.height=h;}
   render(s,c){s.updateMatrixWorld(true);c.updateMatrixWorld(true);renderedScene=s;renderedCamera=c;renderCount++;if(!initialFrame){const maps=new Set();s.traverseVisible(o=>{if(o.isMesh)for(const k of ['map','normalMap','roughnessMap'])if(o.material[k]?.isDataTexture)maps.add(o.material[k]);});initialFrame={position:c.position.clone(),visibleSpots:s.children.filter(o=>o.isSpotLight&&o.visible).length,maxMapSize:Math.max(...[...maps].map(m=>m.image.width))};}}
 }
 const THREE={...Three,WebGLRenderer:Renderer},errors=[];
 const media={matches:false,addEventListener(){}};
-const boot=new Function('THREE','sampleTour','fitTourPose','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','batchStaticBoxes','detailCount','pickVisibleArtwork','chapters','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console','initOptions',source+'\nreturn (async()=>{const controls=await initGallery(initOptions);return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls};})()');
-const app=await boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,3500,v=>lastScroll=v,(type,fn)=>handlers.set('window:'+type,fn),()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))});
+const boot=new Function('THREE','sampleTour','fitTourPose','chapterAt','stops','tourGlyphs','exhibitionSites','buildHangulBuilding','createEnvironment','createReflectingPool','batchStaticBoxes','detailCount','pickVisibleArtwork','chapters','updateTourNavigation','document','matchMedia','innerWidth','innerHeight','devicePixelRatio','scrollY','scrollTo','addEventListener','requestAnimationFrame','ResizeObserver','performance','location','console','createPerformanceGovernor','initOptions',source+'\nreturn (async()=>{const controls=await initGallery(initOptions);return {sample(p,time){progress=desired=p;draw(time);return {position:camera.position.clone(),direction:camera.getWorldDirection(new THREE.Vector3())};},tick:draw,controls,reinitialize:()=>initGallery(initOptions),inspect:()=>({width:renderer.width,height:renderer.height,aspect:camera.aspect})};})()');
+const app=await boot(THREE,sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,updateTourNavigation,document,()=>media,1440,900,1,3500,v=>lastScroll=v,(type,fn)=>handlers.set('window:'+type,fn),()=>1,class{observe(){}},{now:()=>0},{reload(){}},{error:(...a)=>errors.push(a.join(' '))},createPerformanceGovernor);
 function sample(p){clock+=17;return app.sample(p,clock);}
 function settle(){for(let i=0;i<100;i++){clock+=17;app.tick(clock);}}
 function artwork(char){let found;renderedScene.traverse(o=>{if(o.userData.artGlyph===char&&o.isGroup)found=o;});return found;}
@@ -131,9 +133,27 @@ test('opaque architecture prevents a sculpture from being picked through a wall'
   assert.equal(pickVisibleArtwork(Three,ray,[sculpture],[wall]),'work');sculpture.visible=false;
   assert.equal(pickVisibleArtwork(Three,ray,[sculpture],[wall]),undefined);
 });
-test('the route returns home, is continuous in both directions and respects reduced motion',()=>{
+test('the route ends in a low frontal view of the pavilion distinct from the opening',()=>{
   const start=sample(0),end=sample(1);
-  assert.ok(start.position.distanceTo(end.position)<1e-10);assert.ok(start.direction.distanceTo(end.direction)<1e-10);
+  assert.ok(start.position.distanceTo(end.position)>10);
+  assert.ok(start.direction.x>.2);
+  assert.ok(Math.abs(end.direction.x)<1e-10&&end.direction.z<-.98);
+  assert.ok(Math.abs(end.direction.y)<.1);
+  const reduced=sampleTour(.91,{reducedMotion:true});
+  assert.deepEqual(reduced.position,sampleTour(1).position);
+  assert.deepEqual(reduced.target,sampleTour(1).target);
+});
+test('the 3D story uses artwork captions only at its close-ups',()=>{
+  for(const [index,stop] of stops.entries())assert.equal(sampleTour(stop).story,index);
+  assert.equal(sampleTour(.18).story,null);
+  assert.equal(sampleTour(.325).story,null);
+  assert.equal(sampleTour(.18,{reducedMotion:true}).story,1);
+  sample(.18);
+  assert.equal(document.getElementById('story-title').innerHTML,'전시실 사이를 걷다.');
+  sample(stops[2]);
+  assert.match(document.getElementById('room-context').textContent,/물의 뜰/);
+});
+test('the route is continuous in both directions and respects reduced motion',()=>{
   let previous=sampleTour(0).position;
   for(let i=1;i<=2000;i++){
     const p=i/2000,a=sampleTour(p),b=sampleTour(1-(2000-i)/2000);
@@ -203,7 +223,8 @@ test('premium PBR materials and environment are restored with a fixed number of 
     assert.equal(spots,2);assert.equal(shadows,3);assert.ok(pbr>15);assert.ok(renderedScene.environment.isCubeTexture);
   }
 });
-test('the loader compiles shader families in paced batches before its first render',async()=>{
+test('hidden shader preparation preserves image captions while compiling and warming every room',async()=>{
+  element('tour-progress').textContent='26%';element('story-title').innerHTML='WATER IMAGE';element('view-label').textContent='WATER IMAGE';
   const events=[],steps=[],warmFrames=[],shadowBuilds=[];let active=true;
   class ShaderRenderer extends Renderer{
     constructor(){super();this.isWebGLRenderer=true;this.extensions={has:name=>name==='KHR_parallel_shader_compile'};this.viewport=new Three.Vector4(0,0,1200,900);this.scissor=this.viewport.clone();this.state={buffers:{depth:{setMask(){}}}};this.target=null;}
@@ -214,14 +235,27 @@ test('the loader compiles shader families in paced batches before its first rend
     async compileAsync(object,camera,scene){assert.ok(object.isMesh||object.isPoints);assert.ok(scene.isScene);events.push('compile');}
     render(s,c){if(this.shadowMap.needsUpdate){s.traverseVisible(o=>{if(o.isLight&&o.castShadow&&o.shadow.needsUpdate){shadowBuilds.push(o.userData.artGlyph??'pavilion');o.shadow.needsUpdate=false;}});this.shadowMap.needsUpdate=false;}
       if(this.target){events.push('reflection');assert.equal(this.target.width,1024);}
-      else if(this.scissorTest){events.push('warm');const zones=[];s.traverseVisible(o=>{if(o.userData.exhibitionTheme)zones.push(o.userData.exhibitionTheme);});warmFrames.push(zones);assert.equal(this.viewport.z,96);assert.equal(element('tour-progress').textContent,'0%');}else{events.push('render');assert.equal(this.viewport.z,1200);}super.render(s,c);}
+      else if(this.scissorTest){events.push('warm');const zones=[];s.traverseVisible(o=>{if(o.userData.exhibitionTheme)zones.push(o.userData.exhibitionTheme);});warmFrames.push(zones);assert.equal(this.viewport.z,96);assert.equal(element('tour-progress').textContent,'26%');}else{events.push('render');assert.equal(this.viewport.z,1200);}super.render(s,c);}
   }
   document.documentElement.dataset.view='loading';document.documentElement.dataset.state='loading';
   try{
-    const run=await boot({...Three,WebGLRenderer:ShaderRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,document,()=>media,1440,900,1,0,()=>{},()=>{},callback=>{setTimeout(()=>{if(active){events.push('yield');callback(performance.now());}},0);return 1;},class{observe(){}},{now:()=>0},{reload(){}},console,{onProgress:(n,phase)=>steps.push([n,phase])});
+    const run=await boot({...Three,WebGLRenderer:ShaderRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,updateTourNavigation,document,()=>media,1440,900,1,0,()=>{},()=>{},callback=>{setTimeout(()=>{if(active){events.push('yield');callback(performance.now());}},0);return 1;},class{observe(){}},{now:()=>0},{reload(){}},console,createPerformanceGovernor,{onProgress:(n,phase)=>steps.push([n,phase])});
     assert.ok(run.controls);assert.equal(events.at(-1),'render');assert.equal(events.filter(e=>e==='render').length,1);
     assert.ok(events.filter(e=>e==='compile').length>=5);assert.ok(events.filter(e=>e==='yield').length>=9);assert.deepEqual(steps[0],[22,'scene']);assert.deepEqual(steps.at(-1),[100,'ready']);assert.ok(steps.some(([n,phase])=>phase==='frame'&&n===96));
-    assert.equal(warmFrames.length,6);assert.deepEqual(warmFrames.map(z=>z[0]),exhibitionSites.map(site=>site.theme));assert.ok(warmFrames.every(z=>z.length===1));assert.equal(element('tour-progress').textContent,'0%');
+    assert.equal(warmFrames.length,6);assert.deepEqual(warmFrames.map(z=>z[0]),exhibitionSites.map(site=>site.theme));assert.ok(warmFrames.every(z=>z.length===1));assert.equal(element('tour-progress').textContent,'26%');assert.equal(element('story-title').innerHTML,'WATER IMAGE');assert.equal(element('view-label').textContent,'WATER IMAGE');
     assert.deepEqual(shadowBuilds.slice().sort(),['pavilion',...exhibitionSites.map(site=>site.char)].sort());assert.equal(events.filter(e=>e==='reflection').length,1);assert.ok(steps.some(([n,phase])=>phase==='materials'));
   }finally{active=false;document.documentElement.dataset.view='3d';document.documentElement.dataset.state='ready';}
+});
+
+test('retrying a disposed gallery rebuilds a correctly sized and illuminated exhibition',async()=>{
+  app.controls.dispose();await app.reinitialize();sample(.26);
+  assert.deepEqual(app.inspect(),{width:1200,height:900,aspect:4/3});
+  assert.equal(renderedScene.children.filter(o=>o.isSpotLight).length,6);
+  assert.ok(renderedScene.children.some(o=>o.isSpotLight&&o.userData.artGlyph==='ㅇ'&&o.intensity>500),'The new water gallery must have its own accent light');
+});
+
+test('a failed first render disposes the partially created graphics resources',async()=>{
+  let disposed=0;class FailedRenderer extends Renderer{render(){throw new Error('GPU upload failed');}dispose(){disposed++;}}
+  await assert.rejects(boot({...Three,WebGLRenderer:FailedRenderer},sampleTour,fitTourPose,chapterAt,stops,tourGlyphs,exhibitionSites,buildHangulBuilding,createEnvironment,createReflectingPool,batchStaticBoxes,detailCount,pickVisibleArtwork,chapters,updateTourNavigation,document,()=>media,1440,900,1,0,()=>{},()=>{},()=>1,class{observe(){}},{now:()=>0},{reload(){}},console,createPerformanceGovernor),/GPU upload failed/);
+  assert.equal(disposed,1);
 });

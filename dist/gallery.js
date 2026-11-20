@@ -1,19 +1,24 @@
 import * as THREE from './assets/three.module.js';
-import { tourStops as stops, tourGlyphs, chapterAt, sampleTour, fitTourPose } from './camera-tour.js';
+import { tourStops as stops, tourGlyphs, sampleTour, fitTourPose } from './camera-tour.js';
 import { exhibitionSites } from './exhibition-layout.js';
 import { buildHangulBuilding } from './hangul-building.js';
 import { createEnvironment, createReflectingPool } from './environment.js';
 import { batchStaticBoxes, detailCount, pickVisibleArtwork } from './scene-quality.js';
+import { createPerformanceGovernor } from './adaptive-quality.js';
 
 const $ = (id) => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
-import { chapters } from './exhibition-content.js';
+import { chapters, updateTourNavigation } from './exhibition-content.js';
 let progress = 0, desired = 0, chapter = -1, frame = 0, lastTime = 0;
+let shownStory;
+const passageStory={context:'전시 동선',title:'전시실 사이를 걷다.',body:'글자의 선을 따라 다음 공간으로 이동합니다.',note:'',glyph:'',name:'',material:''};
 let scene, camera, renderer, house, dust;
 let stageWidth=0,stageHeight=0,stagePixelRatio=0;
 let reflectingPool=null;
+let governor=null,renderedAt=null,qualityChange=()=>{},performanceFallback=()=>{};
+let interactionEvents=null;
 let environmentDetail;
-let heroBounds,paused=false,renderFailed=false;
+let heroBounds,finaleBounds,paused=false,renderFailed=false;
 let scrollEnabled=false;
 const artworkBounds=[],detailMeshes=[],blockers=[];
 let bright = false, textTimer, scrollHeight = 1;
@@ -24,7 +29,7 @@ const exhibitionGroups=[];
 const stage = $('stage');
 const clamp = THREE.MathUtils.clamp;
 const setText=(id,value)=>{const el=$(id);if(el.textContent!==value)el.textContent=value;};
-function measureScrollHeight(){scrollHeight=Math.max(1,document.documentElement.scrollHeight-innerHeight);}
+function measureScrollHeight(){scrollHeight=Math.max(1,$('journey').offsetHeight);}
 
 function updateScroll() {
   if(document.documentElement.dataset.view!=='3d')return;
@@ -63,9 +68,15 @@ function toggleLighting(){
   requestDraw();
 }
 
-function updateChapter(){
-  const index=chapterAt(progress);if(index===chapter)return;chapter=index;
-  const data=chapters[index];
+function updateChapter({chapter:index,story}){
+  if(index!==chapter){
+    chapter=index;
+    updateTourNavigation(document,index);
+    $('scroll-label').textContent=index===7?'스크롤해 전시 글 읽기':index===0?'아래로 스크롤해 관람':'다음 공간으로';
+  }
+  if(story===shownStory)return;
+  shownStory=story;
+  const data=story===null?passageStory:chapters[story];
   $('room-context').textContent=data.context;
   $('story-title').innerHTML=data.title;
   $('story-body').innerHTML=data.body;
@@ -73,12 +84,12 @@ function updateChapter(){
   $('work-glyph').textContent=data.glyph;
   $('work-name').textContent=data.name;
   $('work-material').textContent=data.material;
-  $('story-action').hidden=index!==7;
-  document.querySelectorAll('[data-stop]').forEach((button,i)=>{
-    button.classList.toggle('active',i===index);
-    if(i===index){button.setAttribute('aria-current','step');const nav=button.parentElement;if(nav?.scrollWidth>nav.clientWidth){const left=button.offsetLeft-nav.offsetLeft; if(left<nav.scrollLeft||left+button.offsetWidth>nav.scrollLeft+nav.clientWidth)nav.scrollLeft=left-(nav.clientWidth-button.offsetWidth)/2;}}else button.removeAttribute('aria-current');
-  });
-  $('scroll-label').textContent=index===7?'처음부터 다시 관람':index===0?'아래로 스크롤해 관람':'다음 공간으로';
+  $('story-action').hidden=story!==7;
+  $('story-read').hidden=story!==7;
+  $('structure-action').hidden=story!==0;
+  $('story-start').hidden=story!==0;
+  $('experience').classList.toggle('is-detail',story!==null&&story>0&&story<7);
+  setText('view-label',story===null?data.context:(exhibitionSites[story-1]?.room??data.context));
 }
 
 // All architecture, lettering, materials and lighting are generated locally.
@@ -146,6 +157,7 @@ function setup(onProgress) {
   scene=new THREE.Scene();scene.fog=new THREE.FogExp2('#10100f',.018);
   camera=new THREE.PerspectiveCamera(35,1,.1,150);
   renderer=new THREE.WebGLRenderer({antialias:innerWidth>=761,alpha:true,powerPreference:'high-performance'});
+  if(renderer.isWebGLRenderer)governor=createPerformanceGovernor({onChange:profile=>{stageWidth=0;reflectingPool?.setQuality(profile);resize();qualityChange(profile);},onFallback:()=>performanceFallback()});
   renderer.setClearColor('#10100f',0);renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<761?1.25:1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -177,14 +189,16 @@ function setup(onProgress) {
   const joint=material('#635f56',.95);
   for(let n=-32;n<=32;n+=4){box(.018,.007,67,joint,n,-.006,0);box(67,.007,.018,joint,0,-.006,n);}
   // The pavilion is one architectural exhibit in a much larger museum.
-  box(17.7,.4,10.2,limestone,0,.2,0);
+  const pavilionBase=box(17.7,.4,10.2,limestone,0,.2,0);
+  finaleBounds=new THREE.Box3().setFromObject(pavilionBase);
   box(17.25,.08,9.7,floor,0,.44,0);
   for(let i=0;i<3;i++){
-    box(8,.12,1.0,limestone,.3,.32-i*.12,5.35+i*.55);
+    finaleBounds.expandByObject(box(8,.12,1.0,limestone,.3,.32-i*.12,5.35+i*.55));
     box(7.9,.018,.025,strip,.3,.37-i*.12,5.85+i*.55);
   }
   const pavilion=buildHangulBuilding(THREE,house,{limestone,timber,charcoal:dark,glass,strip});
   heroBounds=new THREE.Box3().setFromObject(pavilion);
+  finaleBounds.union(heroBounds);
   // A high exhibition hall frames the route without enclosing the artworks in the house.
   box(68,11,.35,hall,0,5.4,-34);box(.35,11,68,hall,-34,5.4,0);box(.35,11,68,hall,34,5.4,0);
   for(let x=-30;x<=30;x+=6){
@@ -315,10 +329,11 @@ function setup(onProgress) {
     raycaster.setFromCamera(pointer,camera);
     return pickVisibleArtwork(THREE,raycaster,sculptures,blockers);
   }
-  stage.addEventListener('click',e=>{const art=pickArtwork(e);if(art)goTo(stops[tourGlyphs.indexOf(art)+1]);});
+  interactionEvents=new AbortController();const interactionOptions={signal:interactionEvents.signal};
+  stage.addEventListener('click',e=>{const art=pickArtwork(e);if(art)goTo(stops[tourGlyphs.indexOf(art)+1]);},interactionOptions);
   let lastPick=-Infinity;
-  stage.addEventListener('pointermove',e=>{const now=performance.now();if(e.pointerType!=='touch'&&now-lastPick>80&&Math.abs(progress-desired)<.001){lastPick=now;renderer.domElement.style.cursor=pickArtwork(e)?'pointer':'default';}});
-  stage.addEventListener('pointerleave',()=>{renderer.domElement.style.cursor='default';});
+  stage.addEventListener('pointermove',e=>{const now=performance.now();if(e.pointerType!=='touch'&&now-lastPick>80&&Math.abs(progress-desired)<.001){lastPick=now;renderer.domElement.style.cursor=pickArtwork(e)?'pointer':'default';}},interactionOptions);
+  stage.addEventListener('pointerleave',()=>{renderer.domElement.style.cursor='default';},interactionOptions);
   resize();
   renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
   // The opening shot is always the first frame, independent of the old document's scroll offset.
@@ -389,7 +404,7 @@ function resize() {
   if(stageWidth===r.width&&stageHeight===r.height)return;
   stageWidth=r.width;stageHeight=r.height;
   // Bound the number of shaded pixels, even on a 4K or high-DPI screen.
-  const maxPixels=innerWidth<761?1000000:2200000,ratio=Math.min(devicePixelRatio,innerWidth<761?1.25:1.5,Math.sqrt(maxPixels/(r.width*r.height)));
+  const profile=governor?.profile,maxPixels=Math.min(innerWidth<761?1000000:2200000,profile?.maxPixels??2200000),ratio=Math.min(devicePixelRatio,innerWidth<761?1.25:1.5,profile?.pixelRatio??1.5,Math.sqrt(maxPixels/(r.width*r.height)));
   if(Math.abs(stagePixelRatio-ratio)>.005){stagePixelRatio=ratio;renderer.setPixelRatio(ratio);}
   renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();requestDraw();
 }
@@ -400,12 +415,15 @@ for(const type of ['wheel','touchmove','keydown','pointerdown'])addEventListener
 document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelDraw();else{lastTime=0;requestDraw();}});
 motion.addEventListener('change',()=>{progress=desired;requestDraw();});
 
-function cancelDraw(){if(frame&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(frame);frame=0;}
+function cancelDraw(){if(frame&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(frame);frame=0;renderedAt=null;governor?.reset();}
 function failRendering(error){if(renderFailed)return;renderFailed=true;cancelDraw();dispatchEvent(new CustomEvent('museum:failure',{detail:error}));}
 function requestDraw(){if(!frame&&!paused&&!renderFailed&&!document.hidden&&document.documentElement.dataset.view==='3d')frame=requestAnimationFrame(draw);}
 function draw(time,force=false,prepareOnly=false,warmOnly=false) {
   frame=0;
   if(renderFailed||(!force&&(paused||document.documentElement.dataset.view!=='3d'||document.hidden)))return;
+  // Only the first rAF after an actual live render measures its presentation cost.
+  // Idle gaps, initialization and deliberate water-frame skipping are excluded.
+  if(!force&&renderedAt!==null){const interval=time-renderedAt;renderedAt=null;governor?.sample(interval);if(paused||renderFailed||document.documentElement.dataset.view!=='3d')return;}
   if(!force&&chapter===2&&reflectingPool?.animated&&!motion.matches&&Math.abs(progress-desired)<.00001&&Math.abs(zoom-desiredZoom)<.00001&&time-lastTime<48){requestDraw();return;}
   const dt=Math.min(.05,(time-lastTime)/1000||.016);lastTime=time;
   progress=motion.matches?desired:THREE.MathUtils.damp(progress,desired,7,dt);
@@ -416,7 +434,7 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
     const mobile=innerWidth<761;
     let pose=sampleTour(progress,{mobile,reducedMotion:motion.matches,zoom});
     const heroWeight=motion.matches?(pose.chapter===0||pose.chapter===7?1:0):Math.max(1-THREE.MathUtils.smoothstep(progress,.025,.075),THREE.MathUtils.smoothstep(progress,.925,.98));
-    if(heroWeight>0)pose=fitTourPose(pose,heroBounds,camera.aspect,zoom,heroWeight);
+    if(heroWeight>0)pose=fitTourPose(pose,pose.chapter===7?finaleBounds:heroBounds,camera.aspect,zoom,heroWeight);
     if(pose.chapter>0&&pose.chapter<7&&pose.focus>0)pose=fitTourPose(pose,artworkBounds[pose.chapter-1],camera.aspect,zoom,pose.focus);
     camera.position.fromArray(pose.position);camera.lookAt(...pose.target);
     camera.fov=pose.fov;camera.updateProjectionMatrix();
@@ -427,37 +445,59 @@ function draw(time,force=false,prepareOnly=false,warmOnly=false) {
     });
     lightArtwork(progress,pose.focus,reveal);
     if(reveal>.001)for(const item of detailMeshes){const count=detailCount(item.mesh.userData.fullDetailCount,camera.position.distanceTo(item.center),item.mesh.userData.environmentDetail);if(count!==item.mesh.count)item.mesh.count=count;}
-    if(!warmOnly){$('experience').classList.toggle('is-detail',pose.focus>.35);setText('view-label',pose.chapter>0&&pose.chapter<7?exhibitionSites[pose.chapter-1].room:'한글 건축관');}
     if(dust) dust.rotation.y=progress*.12;
     if(!prepareOnly){
       const settled=Math.abs(progress-desired)<.0004&&Math.abs(zoom-desiredZoom)<.0004;
       if(reflectingPool&&(!warmOnly||(pose.chapter===2&&renderer.getRenderTarget)))reflectingPool.update(camera,time/1000,bright,motion.matches,time,reveal>.1&&pose.chapter===2,!settled);
       try{renderer.render(scene,camera);}catch(error){if(force)throw error;failRendering(error);return;}
+      if(!force)renderedAt=time;
+    }
+    if(!warmOnly&&document.documentElement.dataset.view==='3d'){
+      setText('tour-progress',Math.round(progress*100)+'%');
+      updateChapter(pose);
     }
   }
-  if(!warmOnly){setText('tour-progress',Math.round(progress*100)+'%');updateChapter();}
   if(!warmOnly&&!prepareOnly&&(Math.abs(progress-desired)>.00001||Math.abs(zoom-desiredZoom)>.00001||(!motion.matches&&reflectingPool?.animated&&chapter===2)))requestDraw();
+  else renderedAt=null;
 }
-export async function initGallery({onProgress=()=>{},shouldContinue=()=>true}={}){
+export async function initGallery({onProgress=()=>{},shouldContinue=()=>true,onQualityChange=()=>{},onFallback=()=>{}}={}){
+  paused=false;renderFailed=false;chapter=-1;governor=null;renderedAt=null;qualityChange=onQualityChange;performanceFallback=onFallback;
+  shownStory=undefined;
+  progress=desired=lastTime=stageWidth=stageHeight=stagePixelRatio=0;zoom=desiredZoom=1;bright=false;scrollEnabled=false;
+  lamps.length=sculptures.length=exhibitionGroups.length=detailMeshes.length=blockers.length=artworkBounds.length=0;
+  reflectingPool=null;renderer=null;dust=null;
   onProgress(22,'scene');if(typeof window!=='undefined')await nextPaint();
   if(!shouldContinue())return null;
+  try{
   setup(onProgress);
   if(renderer.isWebGLRenderer){
     onProgress(34,'materials');await nextPaint();
     const workerFactory=typeof Worker==='function'&&typeof location!=='undefined'&&location.protocol!=='file:'?()=>new Worker(new URL('./surface-worker.js',document.baseURI),{type:'module'}):undefined;
     await environmentDetail.hydrate({workerFactory,schedule:callback=>nextPaint().then(callback)});
-    if(renderFailed||!shouldContinue())return null;
+    if(renderFailed||!shouldContinue()){disposeGallery();return null;}
     onProgress(54,'shader');await nextPaint();
-    if(!await compileGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue())return null;
-    if(!await warmGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue())return null;
+    if(!await compileGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue()){disposeGallery();return null;}
+    if(!await warmGallery(onProgress,shouldContinue)||renderFailed||!shouldContinue()){disposeGallery();return null;}
     onProgress(96,'frame');await nextPaint();
   }
-  if(renderFailed||!shouldContinue())return null;
+  if(renderFailed||!shouldContinue()){disposeGallery();return null;}
   draw(performance.now(),true);onProgress(100,'ready');
   return {
+    getProgress:()=>progress,
+    seek(value,{scroll=true}={}){scrollEnabled=true;progress=desired=clamp(value,0,1);measureScrollHeight();if(scroll)scrollTo({top:progress*scrollHeight,behavior:'instant'});chapter=-1;shownStory=undefined;requestDraw();},
+    dispose:disposeGallery,
     goTo,setZoom,toggleLighting,refresh(){resize();measureScrollHeight();updateScroll();},
     pause(){paused=true;cancelDraw();},resume(){if(renderFailed)return;paused=false;lastTime=0;resize();updateScroll();requestDraw();},
     changeZoom(delta){setZoom(desiredZoom+delta);},
     next(){goTo(desired>.985?0:(stops.find(stop=>stop>desired+.025)??1));}
   };
+  }catch(error){disposeGallery();throw error;}
+}
+
+function disposeGallery(){
+  paused=true;cancelDraw();interactionEvents?.abort();reflectingPool?.dispose?.();
+  const resources=new Set();if(scene?.environment)resources.add(scene.environment);
+  scene?.traverse(object=>{object.shadow?.dispose?.();if(object.geometry)resources.add(object.geometry);for(const mat of (Array.isArray(object.material)?object.material:[object.material]).filter(Boolean)){resources.add(mat);for(const value of Object.values(mat))if(value?.isTexture)resources.add(value);}});
+  for(const resource of resources)resource.dispose();
+  renderer?.dispose?.();renderer?.domElement?.remove?.();
 }

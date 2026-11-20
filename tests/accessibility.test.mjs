@@ -11,13 +11,22 @@ test('readable UI color tokens meet normal-text contrast on both background surf
 });
 test('mobile help remains available and all functional text is at least 12px',()=>{
   assert.ok(html.includes('<details class="help-menu"'));assert.ok(!css.includes('.header-nav{display:none'));
-  for(const match of css.matchAll(/font-size:(\d+)px/g))assert.ok(Number(match[1])>=12);
-  assert.ok(css.includes('min-width:44px'));assert.ok(css.includes('touch-action:none'));
+  for(const match of css.matchAll(/font-size:\s*(\d+)px/g))assert.ok(Number(match[1])>=12);
+  assert.ok(css.includes('min-width:44px'));
+  assert.match(css,/\.workshop-grip\s*\{[^}]*touch-action:\s*none/);
+  assert.match(css,/#workshop-canvas\s*\{[^}]*touch-action:\s*pan-y/);
 });
 test('all fonts, libraries, illustrations and licenses are self-hosted',async()=>{
-  for(const file of ['assets/gowun-batang.ttf','assets/FONT-LICENSE.txt','assets/CANNON-LICENSE.txt','assets/THREE-LICENSE.txt','assets/cannon-es.js','assets/house-plan.svg'])await access(new URL(file,base));
+  for(const file of ['assets/gowun-batang.ttf','assets/FONT-LICENSE.txt','assets/CANNON-LICENSE.txt','assets/THREE-LICENSE.txt','assets/MOTION-LICENSE.txt','assets/cannon-es.js','assets/motion-mini.js','assets/house-plan.svg'])await access(new URL(file,base));
   assert.equal(/https?:\/\//.test(html),false);
   assert.equal([...html.matchAll(/<a[^>]+href="([^"#][^"]*)"/g)].length,0,'The visitor must stay on one page');
-  for(const file of ['THREE-LICENSE.txt','CANNON-LICENSE.txt'])assert.ok((await readFile(new URL('assets/'+file,base),'utf8')).includes('Permission is hereby granted'));
+  for(const file of ['THREE-LICENSE.txt','CANNON-LICENSE.txt','MOTION-LICENSE.txt'])assert.ok((await readFile(new URL('assets/'+file,base),'utf8')).includes('Permission is hereby granted'));
   assert.ok((await readFile(new URL('assets/FONT-LICENSE.txt',base),'utf8')).includes('SIL OPEN FONT LICENSE'));
+});
+test('the notes lead with the finished house and six continuously readable room descriptions',()=>{
+  const notes=html.slice(html.indexOf('id="text-tour"'),html.indexOf('id="credits"'));
+  assert.match(notes, /class="notes-transition"[\s\S]*assets\/gallery\/finale\.jpg[\s\S]*id="text-tour-title"/);
+  assert.equal([...notes.matchAll(/class="text-room"/g)].length,6);
+  assert.equal([...notes.matchAll(/data-note-stop="[1-6]"/g)].length,6);
+  assert.doesNotMatch(notes,/<details|사진 속 .*살펴보기/);
 });

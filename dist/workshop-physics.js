@@ -6,11 +6,18 @@ export const pieces = [
   {char:'ㅇ',name:'창',material:'황동',mass:3.4,color:'#b99155',start:[3.5,4.3],target:[1.65,1.24],width:2.16,height:2.16}
 ];
 
-export function createWorkshopWorld({gravity=true,onChange=()=>{}}={}) {
+export function createWorkshopWorld({gravity=true,assembly=false,onChange=()=>{}}={}) {
   const world=new CANNON.World({gravity:new CANNON.Vec3(0,gravity?-9.82:0,0),allowSleep:true});
   world.solver.iterations=16;world.defaultContactMaterial.friction=.58;world.defaultContactMaterial.restitution=.16;
   const floor=new CANNON.Body({mass:0,shape:new CANNON.Plane()});floor.quaternion.setFromEuler(-Math.PI/2,0,0);floor.position.y=.12;world.addBody(floor);
   for(const x of [-5.6,5.6]){const wall=new CANNON.Body({mass:0,shape:new CANNON.Box(new CANNON.Vec3(.2,5,1))});wall.position.set(x,4,0);world.addBody(wall);}
+  const dropTray={x:3.15,y:.34,width:3.9,height:.44};
+  const support=assembly?new CANNON.Body({
+    mass:0,collisionFilterMask:0,
+    position:new CANNON.Vec3(dropTray.x,dropTray.y,0),
+    shape:new CANNON.Box(new CANNON.Vec3(dropTray.width/2,dropTray.height/2,.65))
+  }):null;
+  if(support)world.addBody(support);
   function addBar(body,width,height,x=0,y=0,angle=0){
     const q=new CANNON.Quaternion();q.setFromEuler(0,0,angle);
     body.addShape(new CANNON.Box(new CANNON.Vec3(width/2,height/2,.2)),new CANNON.Vec3(x,y,0),q);
@@ -24,31 +31,93 @@ export function createWorkshopWorld({gravity=true,onChange=()=>{}}={}) {
     world.addBody(body);return body;
   });
   const mouse=new CANNON.Body({mass:0,type:CANNON.Body.KINEMATIC,collisionFilterGroup:0,collisionFilterMask:0});world.addBody(mouse);
-  let constraint=null,dragging=-1,selected=0;
-  function reset(){endDrag(false);bodies.forEach((body,i)=>{body.type=CANNON.Body.DYNAMIC;body.mass=pieces[i].mass;body.updateMassProperties();body.position.set(...pieces[i].start,0);body.quaternion.setFromEuler(0,0,gravity?(i-1)*.06:0);body.velocity.setZero();body.angularVelocity.setZero();body.force.setZero();body.torque.setZero();body.userData.placed=false;body.aabbNeedsUpdate=true;body.wakeUp();});selected=0;onChange();}
+  let constraint=null,dragging=-1,selected=0,drop=null;
+  if(support)for(const body of bodies){
+    body.addEventListener('collide',event=>{
+      if(drop?.index===body.userData.index&&drop.phase==='falling'&&event.body===support)drop.phase='contact';
+    });
+  }
+  function stage(index,available){
+    const body=bodies[index];
+    body.type=CANNON.Body.DYNAMIC;body.mass=pieces[index].mass;body.updateMassProperties();
+    body.position.set(...(assembly?[3.15,2.1]:pieces[index].start),0);
+    body.quaternion.setFromEuler(0,0,gravity&&!assembly?(index-1)*.06:0);
+    body.velocity.setZero();body.angularVelocity.setZero();body.force.setZero();body.torque.setZero();
+    body.userData.placed=false;body.aabbNeedsUpdate=true;body.collisionFilterMask=available?-1:0;
+    if(available)body.wakeUp();else body.sleep();
+  }
+  function reset(){
+    stopDrop();
+    endDrag(false);
+    selected=0;
+    bodies.forEach((_,index)=>stage(index,!assembly||index===0));
+    onChange();
+  }
   function place(index=selected){
-    const body=bodies[index];if(!body||body.userData.placed)return false;
+    const body=bodies[index];if(!body||body.userData.placed||(assembly&&index!==selected))return false;
+    stopDrop();
     if(dragging===index)endDrag(false);
     body.position.set(...pieces[index].target,0);body.quaternion.set(0,0,0,1);body.velocity.setZero();body.angularVelocity.setZero();body.force.setZero();body.torque.setZero();body.type=CANNON.Body.STATIC;body.mass=0;body.updateMassProperties();body.aabbNeedsUpdate=true;body.userData.placed=true;body.sleep();
-    selected=bodies.findIndex(b=>!b.userData.placed);if(selected<0)selected=index;
-    bodies.filter(b=>!b.userData.placed).forEach(b=>b.wakeUp());onChange();return true;
+    const next=bodies.findIndex(b=>!b.userData.placed);
+    selected=next<0?index:next;
+    if(assembly){
+      if(next>=0)stage(next,true);
+    }else bodies.filter(b=>!b.userData.placed).forEach(b=>b.wakeUp());
+    onChange();return true;
   }
-  function select(index){if(index>=0&&index<bodies.length){selected=index;onChange();}}
+  function select(index){if(!assembly&&index>=0&&index<bodies.length){selected=index;onChange();}}
+  function undo(){
+    const previous=bodies.findLastIndex(body=>body.userData.placed);
+    if(!assembly||previous<0)return false;
+    stopDrop();
+    endDrag(false);
+    if(!bodies[selected].userData.placed)stage(selected,false);
+    selected=previous;
+    stage(previous,true);
+    onChange();return true;
+  }
   function beginDrag(index,x,y){
-    if(constraint||!bodies[index]||bodies[index].userData.placed)return false;
+    if(constraint||drop?.phase==='falling'||!bodies[index]||bodies[index].userData.placed||(assembly&&index!==selected))return false;
+    stopDrop();
     selected=index;dragging=index;const body=bodies[index];body.wakeUp();mouse.position.set(x,y,0);mouse.velocity.setZero();
     const local=body.pointToLocalFrame(mouse.position);constraint=new CANNON.PointToPointConstraint(body,local,mouse,new CANNON.Vec3(),1800);constraint.collideConnected=false;world.addConstraint(constraint);onChange();return true;
   }
   function dragTo(x,y){if(!constraint)return;mouse.position.set(Math.max(-5.1,Math.min(5.1,x)),Math.max(.3,Math.min(7.4,y)),0);mouse.velocity.setZero();bodies[dragging].wakeUp();}
-  function endDrag(snap=true){
-    if(!constraint)return;const index=dragging;world.removeConstraint(constraint);constraint=null;dragging=-1;
-    const body=bodies[index],target=pieces[index].target;
-    if(snap&&Math.hypot(body.position.x-target[0],body.position.y-target[1])<.95)place(index);
-    onChange();
+  function isNearTarget(index,{x,y}){
+    const [targetX,targetY]=pieces[index].target;
+    return Math.hypot(x-targetX,y-targetY)<.95;
   }
-  function setGravity(enabled){gravity=!!enabled;world.gravity.y=gravity?-9.82:0;bodies.filter(b=>!b.userData.placed).forEach(b=>{if(!gravity){b.velocity.setZero();b.angularVelocity.setZero();}b.wakeUp();});onChange();}
+  function endDrag(snap=true,position){
+    if(!constraint)return false;
+    const index=dragging;
+    world.removeConstraint(constraint);constraint=null;dragging=-1;
+    if(snap&&isNearTarget(index,position??bodies[index].position))return place(index);
+    if(assembly)stage(index,true);
+    onChange();return false;
+  }
+  function beginDrop(){
+    if(!support||constraint||drop?.phase==='falling'||bodies[selected].userData.placed)return false;
+    stage(selected,true);
+    const body=bodies[selected];
+    body.position.y=3.3;
+    body.quaternion.setFromEuler(0,0,-.13);
+    support.collisionFilterMask=-1;
+    world.gravity.y=-9.82;
+    drop={index:selected,phase:'falling'};
+    onChange();
+    return true;
+  }
+  function stopDrop(restage=false){
+    if(!drop)return;
+    const index=drop.index;
+    drop=null;
+    support.collisionFilterMask=0;
+    world.gravity.y=gravity?-9.82:0;
+    if(restage)stage(index,true);
+  }
+  function setGravity(enabled){stopDrop();gravity=!!enabled;world.gravity.y=gravity?-9.82:0;bodies.filter(b=>!b.userData.placed&&b.collisionFilterMask).forEach(b=>{if(assembly)stage(b.userData.index,true);else{if(!gravity){b.velocity.setZero();b.angularVelocity.setZero();}b.wakeUp();}});onChange();}
   function step(dt){world.step(1/90,Math.max(0,Math.min(dt,1/15)),6);}
   function moving(){return !!constraint||bodies.some(b=>b.type===CANNON.Body.DYNAMIC&&b.sleepState!==CANNON.Body.SLEEPING);}
   reset();
-  return {world,bodies,pieces,reset,place,select,beginDrag,dragTo,endDrag,setGravity,step,moving,get selected(){return selected;},get dragging(){return dragging;},get complete(){return bodies.every(b=>b.userData.placed);},get count(){return bodies.filter(b=>b.userData.placed).length;}};
+  return {world,bodies,pieces,dropTray,beginDrop,stopDrop,reset,place,select,undo,beginDrag,dragTo,isNearTarget,endDrag,setGravity,step,moving,get dropState(){return drop?.phase??'idle';},get selected(){return selected;},get dragging(){return dragging;},get complete(){return bodies.every(b=>b.userData.placed);},get count(){return bodies.filter(b=>b.userData.placed).length;}};
 }

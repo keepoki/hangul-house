@@ -4,12 +4,12 @@ import {readFile} from 'node:fs/promises';
 import {createWorkshopWorld,pieces} from '../dist/workshop-physics.js';
 import {fixture} from './dom-fixture.mjs';
 const source=(await readFile(new URL('../dist/workshop.js',import.meta.url),'utf8')).replace(/^import[^;]+;\s*/gm,'').replace(/^export\s+/gm,'');
-function boot(){
+function boot(reduced=false){
   const f=fixture();
   const create=new Function('createWorkshopWorld','pieces','document','matchMedia','devicePixelRatio','requestAnimationFrame','cancelAnimationFrame','ResizeObserver','addEventListener',source+'\nreturn createWorkshop();');
-  const workshop=create(createWorkshopWorld,pieces,f.document,()=>({matches:false}),1,f.raf,f.cancel,f.ResizeObserver,f.window.addEventListener.bind(f.window));
-  workshop.open();const canvas=f.$('workshop-canvas'),unit=Math.min(600/11.4,365/7.6);
-  function point(index){const body=workshop.model.bodies[index];return{clientX:300+body.position.x*unit,clientY:378-body.position.y*unit};}
+  const workshop=create(createWorkshopWorld,pieces,f.document,()=>({matches:reduced}),1,f.raf,f.cancel,f.ResizeObserver,f.window.addEventListener.bind(f.window));
+  workshop.open();const canvas=f.$('workshop-canvas'),unit=Math.min(600/10.8,355/5.5),originY=(400+4.8*unit)/2+9;
+  function point(index){const body=workshop.model.bodies[index];return{clientX:300+body.position.x*unit,clientY:originY-body.position.y*unit};}
   return{f,workshop,canvas,point};
 }
 test('pointer cancellation, second pointers and lost capture never leave the workshop dragging',()=>{
@@ -22,12 +22,65 @@ test('pointer cancellation, second pointers and lost capture never leave the wor
   f.fire(canvas,'pointerdown',{pointerId:4,button:0,...point(0)});f.fire(f.window,'blur');assert.equal(workshop.model.dragging,-1);assert.equal(workshop.model.world.constraints.length,0);
   workshop.dispose();
 });
-test('keyboard and selection buttons can complete the house without dragging',()=>{
+test('keyboard and the placement button follow the exhibit order and reveal the completed model',()=>{
   const {f,workshop,canvas}=boot();
-  for(const key of ['1','2','3']){f.fire(canvas,'keydown',{key});f.fire(canvas,'keydown',{key:'Enter'});}
-  assert.equal(workshop.model.complete,true);assert.ok(f.$('workshop-status').textContent.includes('완성'));
-  f.fire(f.$('reset-workshop'),'click');assert.equal(workshop.model.complete,false);
-  f.fire(f.groups['[data-piece]'][1],'click');f.fire(f.$('place-piece'),'click');assert.equal(workshop.model.bodies[1].userData.placed,true);
+  assert.equal(f.$('workshop-exhibit').dataset.part,'mieum');
+  f.fire(canvas,'keydown',{key:'3'});
+  f.fire(canvas,'keydown',{key:'Enter'});
+  assert.deepEqual(workshop.model.bodies.map(body=>body.userData.placed),[true,false,false]);
+  assert.match(f.$('workshop-status').textContent,/입구.*지붕/);
+  assert.equal(f.$('workshop-exhibit').dataset.part,'siot');
+  f.fire(f.$('place-piece'),'click');
+  assert.equal(f.$('workshop-exhibit').dataset.part,'ieung');
+  f.fire(f.$('place-piece'),'click');
+  assert.equal(workshop.model.complete,true);
+  assert.equal(f.$('workshop-completion').hidden,false);
+  assert.equal(f.$('workshop-assembly').hidden,true);
+  assert.equal(f.$('workshop-exhibit').dataset.part,'whole');
+  assert.equal(f.$('workshop-complete-title').focused,true);
+  f.fire(f.$('undo-workshop'),'click');
+  assert.deepEqual(workshop.model.bodies.map(body=>body.userData.placed),[true,true,false]);
+  assert.equal(f.$('workshop-assembly').hidden,false);
+  f.fire(f.$('reset-workshop'),'click');
+  assert.equal(workshop.model.count,0);
+  workshop.dispose();
+});
+test('a missed drop returns the piece and a fast drop at the outline advances the step',()=>{
+  const {f,workshop,canvas,point}=boot();
+  const start=point(0),target=pieces[0].target;
+  f.fire(canvas,'pointerdown',{pointerId:1,button:0,...start});
+  f.fire(canvas,'pointerup',{pointerId:1,...start});
+  assert.equal(workshop.model.count,0);
+  assert.equal(f.$('workshop-status').dataset.feedback,'retry');
+  assert.deepEqual(point(0),start);
+  const body=workshop.model.bodies[0];
+  const unit=Math.min(600/10.8,355/5.5);
+  const atOutline={clientX:start.clientX+(target[0]-body.position.x)*unit,clientY:start.clientY-(target[1]-body.position.y)*unit};
+  f.fire(canvas,'pointerdown',{pointerId:2,button:0,...start});
+  f.fire(canvas,'pointermove',{pointerId:2,...atOutline});
+  assert.equal(f.$('workshop-status').dataset.feedback,'aligned');
+  f.fire(canvas,'pointerup',{pointerId:2,...atOutline});
+  assert.equal(workshop.model.count,1);
+  assert.equal(f.$('workshop-status').dataset.feedback,'placed');
+  workshop.dispose();
+});
+test('the last touch drop keeps its grip mounted until the completion frame',()=>{
+  const {f,workshop,point}=boot();
+  const place=f.$('place-piece'),grip=f.$('workshop-grip');
+  f.fire(place,'click');
+  f.fire(place,'click');
+  const start=point(2),body=workshop.model.bodies[2],target=pieces[2].target,unit=Math.min(600/10.8,355/5.5);
+  f.fire(grip,'pointerdown',{pointerId:1,button:0,pointerType:'touch',...start});
+  assert.equal(grip.hasPointerCapture(1),true);
+  f.fire(grip,'pointerup',{pointerId:1,pointerType:'touch',clientX:start.clientX+(target[0]-body.position.x)*unit,clientY:start.clientY-(target[1]-body.position.y)*unit});
+  assert.equal(workshop.model.complete,true);
+  assert.equal(grip.hasPointerCapture(1),false);
+  assert.equal(f.$('workshop-assembly').hidden,false);
+  const [[id,frame]]=f.frames;
+  f.frames.delete(id);
+  frame(0);
+  assert.equal(f.$('workshop-assembly').hidden,true);
+  assert.equal(f.$('workshop-complete-title').focused,true);
   workshop.dispose();
 });
 test('closing or hiding the workshop stops its render loop and clears gestures',()=>{
@@ -35,4 +88,16 @@ test('closing or hiding the workshop stops its render loop and clears gestures',
   f.document.hidden=true;f.fire(f.document,'visibilitychange');assert.equal(workshop.model.dragging,-1);assert.equal(f.frames.size,0);
   f.document.hidden=false;f.fire(f.document,'visibilitychange');assert.ok(f.frames.size>0);
   workshop.pause();assert.equal(f.frames.size,0);workshop.dispose();
+});
+test('reduced motion presents the contact result and leaves direct placement available',()=>{
+  const {f,workshop}=boot(true),drop=f.$('workshop-drop');
+  f.fire(drop,'click');
+  assert.equal(workshop.model.dropState,'contact');
+  assert.equal(f.$('workshop-status').dataset.feedback,'contact');
+  assert.match(f.$('workshop-status').textContent,/받침에 닿았어요/);
+  assert.equal(workshop.model.count,0);
+  f.fire(f.$('place-piece'),'click');
+  assert.equal(workshop.model.count,1);
+  assert.equal(workshop.model.dropState,'idle');
+  workshop.dispose();
 });

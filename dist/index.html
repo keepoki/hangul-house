@@ -8,14 +8,29 @@
 if('scrollRestoration' in history)history.scrollRestoration='manual';
 if(location.hash&&performance.getEntriesByType?.('navigation')[0]?.type==='reload')history.replaceState(history.state,'',location.pathname+location.search);
 document.documentElement.dataset.view='loading';
+document.addEventListener('click',event=>{
+  const root=document.documentElement;
+  if(root.dataset.view!=='loading'||!event.target.closest?.('.loading-text-link'))return;
+  root.dataset.readFirst='true';
+  root.dataset.view='static';
+  const reveal=()=>{
+    document.getElementById('experience').inert=false;
+    const text=document.getElementById('text-tour');
+    text.tabIndex=-1;
+    text.scrollIntoView({behavior:'instant',block:'start'});
+    text.focus({preventScroll:true});
+  };
+  if(document.getElementById('text-tour'))reveal();
+  else document.addEventListener('DOMContentLoaded',reveal,{once:true});
+});
 </script>
 <meta name="theme-color" content="#11120f">
 <meta name="description" content="한글의 선이 기둥과 지붕이 되는 디지털 전시. 여섯 공간을 둘러보고, 중력과 충돌이 있는 한글 작업실에서 나만의 집을 지어보세요.">
 <title>글자의 집 — 한글의 선으로 공간을 짓다</title>
 <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./style.css">
-<link rel="modulepreload" href="./assets/three.module.js">
-<link rel="modulepreload" href="./gallery.js">
+<link rel="preload" href="./assets/gallery/house.jpg" as="image" media="(min-width: 760px), (orientation: landscape)">
+<link rel="preload" href="./assets/gallery/house-mobile.jpg" as="image" media="(max-width: 759px) and (orientation: portrait)">
 <link rel="preload" href="./assets/gowun-batang.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body id="home">
@@ -30,28 +45,39 @@ document.documentElement.dataset.view='loading';
   </div>
 </section>
 <a class="skip" href="#text-tour">전시 설명으로 바로 가기</a>
+<div class="gallery-tour">
 <div class="experience" id="experience">
 <header class="header">
 <a class="brand" href="#home" aria-label="글자의 집 처음으로"><span class="brand-mark" aria-hidden="true">ㅎ</span><span>글자의 집<small>A House of Hangul</small></span></a>
+<div class="header-actions">
 <nav class="header-nav" aria-label="주 메뉴">
 <button class="desktop-link" type="button" data-goto="0">공간 보기</button>
 <button class="desktop-link" type="button" data-goto="0.13">작품 보기</button>
+<details class="viewing-menu" id="viewing-menu"><summary>관람 방식 <span id="viewing-current">이미지</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+<div class="viewing-options"><fieldset><legend>관람 방식 선택</legend>
+<label><input type="radio" name="viewing-mode" value="auto" checked><span>자동<small>기기 성능에 맞춰 편안하게</small></span></label>
+<label><input type="radio" name="viewing-mode" value="3d"><span>3D<small>카메라를 움직이며 공간 관람</small></span></label>
+<label><input type="radio" name="viewing-mode" value="images"><span>이미지<small>고화질 장면으로 가볍게 관람</small></span></label>
+</fieldset><p id="viewing-status" role="status" aria-live="polite">이미지로 먼저 관람할 수 있습니다.</p><button class="text-link" type="button" data-viewing-choice="3d">3D 다시 준비하기</button><p class="viewing-note">선택한 방식은 이 브라우저에 저장됩니다.</p></div></details>
 <details class="help-menu" id="help-menu"><summary>관람 안내</summary><div class="help-content">
 <h2>천천히, 가까이.</h2>
 <p>스크롤하면 전시 구역 사이를 이동하고, 각 글자의 눈높이까지 다가갑니다. 위로 스크롤하면 되짚어 볼 수 있어요.</p>
 <p>아래 글자를 누르거나 작품을 클릭하면 바로 가까이 볼 수 있습니다. 확대는 +·− 버튼, 키보드는 +·−·0을 사용하세요.</p>
-<p>‘직접 짓기’에서는 글자 조각을 끌어 집을 만듭니다. 드래그 대신 조각을 선택하고 ‘맞춰 놓기’를 눌러도 됩니다.</p>
+<p>‘직접 짓기’에서는 조각을 윤곽에 끌어 놓거나 ‘입구 놓기’, ‘지붕 놓기’, ‘창 놓기’ 버튼을 누르세요. ‘중력으로 놓아 보기’에서는 조각이 받침에 닿는 모습을 볼 수 있습니다.</p>
 <button class="text-link" type="button" data-show-text>전시를 글로 읽기</button>
 <a class="text-link" href="#credits" data-credits>제작 정보와 라이선스</a>
 </div></details>
 <button class="workshop-link" type="button" data-open-workshop hidden>직접 짓기</button>
 </nav>
 <button class="light-toggle" id="light-toggle" type="button" aria-pressed="false" aria-label="조명을 더 밝게" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><span>조명</span></button>
+</div>
 </header>
 <div class="scene-wrap">
 <img class="scene-poster" id="scene-poster" src="./assets/house-plan.svg" alt="ㄱ 기둥과 처마, ㅅ 지붕, ㅁ 입구, ㅇ 창으로 구성한 한글 집의 정면도." width="800" height="500">
+<picture class="gallery-still" id="gallery-picture"><source id="gallery-image-mobile" media="(max-width: 759px) and (orientation: portrait)" srcset="./assets/gallery/house-mobile.jpg"><img id="gallery-image" src="./assets/gallery/house.jpg" alt="한글의 선으로 지은 건축관의 고화질 전시 이미지." width="1920" height="1080" fetchpriority="high" decoding="async"></picture>
 <div id="stage" role="img" aria-label="넓은 전시관 중앙의 한글 건축물과, 돌·물·나무·빛·정원·자갈을 주제로 독립 배치된 여섯 한글 조형물."></div>
 <p class="load-status" id="load-status" role="status">3D 전시를 준비하고 있습니다.</p>
+<div class="image-feedback"><p id="viewing-announcement" role="status" aria-live="polite"></p><p id="image-status" role="status" aria-live="polite"></p><button id="retry-image" type="button" hidden>이미지 다시 불러오기</button></div>
 <div class="view-controls" role="group" aria-label="전시 화면 확대 및 축소">
 <button type="button" id="zoom-out" aria-label="축소" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
 <output id="zoom-value" aria-label="확대 배율">100%</output>
@@ -60,11 +86,18 @@ document.documentElement.dataset.view='loading';
 </div></div>
 <div class="vignette" aria-hidden="true"></div>
 <main class="story" aria-live="polite" aria-atomic="true">
-<h1 id="story-title">한글의 선으로<br>공간을 짓다.</h1>
-<p class="story-body" id="story-body">ㄱ은 기둥과 처마로, ㅅ은 지붕으로.<br>익숙한 글자가 건축이 되는 전시입니다.</p>
+<div class="story-copy" tabindex="0">
+<h1 id="story-title">한글의 선으로<br> 공간을 짓다.</h1>
+<p class="story-body" id="story-body">ㄱ은 기둥과 처마로, ㅅ은 지붕으로.<br> 익숙한 글자가 건축이 되는 전시입니다.</p>
 <p class="room-context" id="room-context">한글 건축관</p>
 <p class="story-note" id="story-note">아래로 스크롤해 여섯 공간을 만나보세요.</p>
+</div>
+<div class="story-actions">
+<button class="story-action" id="story-start" type="button" hidden>첫 글자 만나기</button>
+<button class="structure-entry" id="structure-action" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button>
 <button class="story-action" id="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button>
+<button class="structure-entry" id="story-read" type="button" data-show-text hidden>전시 글 이어 읽기</button>
+</div>
 <div class="failure-actions" id="failure-actions" hidden><button type="button" id="retry-gallery">3D 다시 열기</button><a href="#text-tour">전시 설명 읽기</a></div>
 </main>
 <div class="work-caption" id="work-caption" aria-hidden="true"><span id="work-glyph">ㅁ</span><div><span id="work-name">한글로 지은 집</span><small id="work-material">석재 · 참나무 · 짙은 돌</small></div></div>
@@ -80,40 +113,517 @@ document.documentElement.dataset.view='loading';
 <button type="button" data-stop="6" aria-label="고요의 방, 시옷">ㅅ</button>
 <button type="button" data-stop="7" aria-label="관람 마무리와 한글 작업실">짓기</button>
 </nav><div class="journey-status"><span id="view-label">한글 건축관</span><output id="tour-progress" aria-live="off" aria-label="관람 진행률">0%</output></div>
+<button class="mobile-workshop-link" id="mobile-workshop" type="button" data-open-workshop aria-haspopup="dialog" aria-controls="workshop-dialog" hidden>직접 짓기</button>
 </footer></div>
 <div class="scroll-track" id="journey" aria-hidden="true"></div>
+</div>
 <section class="text-tour" id="text-tour" aria-labelledby="text-tour-title">
-<div class="text-tour-heading"><h2 id="text-tour-title">선에서 공간으로.</h2><p>스크롤로 만나는 여섯 개의 전시 공간입니다. 3D를 열 수 없어도 글자의 형태와 전시의 의미를 읽을 수 있습니다.</p><button type="button" class="resume-button" id="resume-gallery" hidden>3D 관람으로 돌아가기</button></div>
-<section class="text-room" id="room-stone"><span class="text-glyph" aria-hidden="true">ㄱ</span><div><h3>돌의 방</h3><p>ㄱ의 가로선은 처마가 되고, 세로선은 그 아래의 공간을 받칩니다. 석회암의 무게와 선의 방향을 함께 감상합니다.</p></div></section>
-<section class="text-room" id="room-water"><span class="text-glyph" aria-hidden="true">ㅇ</span><div><h3>물의 뜰</h3><p>ㅇ의 가운데를 비우자 창이 생깁니다. 청동의 둥근 틈 너머로 물과 빛이 이어지고, 비워 둔 곳에 풍경이 담깁니다.</p></div></section>
-<section class="text-room" id="room-wood"><span class="text-glyph" aria-hidden="true">ㅁ</span><div><h3>나무의 뜰</h3><p>ㅁ의 네 방향이 하나의 방을 만듭니다. 가운데를 열면 누구나 드나드는 입구가 됩니다. 닫힌 글자가 열린 공간으로 바뀝니다.</p></div></section>
-<section class="text-room" id="room-light"><span class="text-glyph" aria-hidden="true">ㅎ</span><div><h3>빛의 방</h3><p>ㅎ의 짧은 선과 둥근 형태를 나누어 봅니다. 황동의 표면과 틈마다 다른 방향의 빛이 닿습니다.</p></div></section>
-<section class="text-room" id="room-garden"><span class="text-glyph" aria-hidden="true">ㅏ</span><div><h3>초록의 정원</h3><p>ㅏ의 곧은 선은 기둥이 되고, 옆으로 뻗은 선은 정원으로 향하는 길이 됩니다. 식물의 유연한 선과 금속의 곧은 선을 비교합니다.</p></div></section>
-<section class="text-room" id="room-quiet"><span class="text-glyph" aria-hidden="true">ㅅ</span><div><h3>고요의 방</h3><p>서로 기대는 ㅅ의 두 선. 기울어진 획 아래에 사람이 머물 자리가 생깁니다. 지붕과 글자가 공유하는 형태를 발견해보세요.</p></div></section>
+<div class="notes-transition">
+  <div class="notes-scene">
+    <div class="notes-frame" aria-hidden="true">
+      <div class="notes-art">
+        <img class="notes-house" src="./assets/gallery/finale.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="">
+        <svg class="notes-drawing" viewBox="0 0 1920 1080" fill="none" focusable="false">
+          <defs><pattern id="notes-paper-grid" width="64" height="64" patternUnits="userSpaceOnUse"><path d="M0 64V0H64" stroke="currentColor" stroke-width="1"/></pattern></defs>
+          <g class="notes-grid">
+            <rect width="1920" height="1080" fill="url(#notes-paper-grid)"/>
+            <path d="M282 767H1638M305 798H1614M652 828H1318M997 143V862M311 439H1610" stroke="currentColor" stroke-width="2" stroke-dasharray="8 10"/>
+          </g>
+          <g class="notes-outlines" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+            <path data-trace="roof" pathLength="1" d="M709 422 997 225 1325 450 1282 492 997 301 710 493Z"/>
+            <path data-trace="frame" pathLength="1" d="M753 751V439H1211V751ZM806 731H1160V492H806Z"/>
+            <path data-trace="eaves" pathLength="1" d="M374 396H709V749H646V459H374Z"/>
+            <ellipse data-trace="window" pathLength="1" cx="1385" cy="600" rx="154" ry="149"/>
+            <ellipse data-trace="window" pathLength="1" cx="1389" cy="599" rx="92" ry="90"/>
+          </g>
+          <g class="notes-labels" fill="currentColor" text-anchor="middle">
+            <text x="515" y="367">ㄱ 처마</text><text x="997" y="194">ㅅ 지붕</text>
+            <text x="981" y="628">ㅁ 입구</text><text x="1389" y="618">ㅇ 창</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <header class="notes-intro">
+      <h2 id="text-tour-title">전시 노트</h2>
+      <p>ㄱ은 처마가 되고, ㅅ은 지붕이 됩니다. ㅁ의 안쪽은 입구로, ㅇ의 빈 곳은 창으로 이어집니다.</p>
+    </header>
+  </div>
+</div>
+<div class="text-tour-content">
+<div class="text-tour-heading"><button class="structure-entry" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button><button type="button" class="resume-button" id="resume-gallery" hidden>전시 관람으로 돌아가기</button></div>
+<section class="text-room" id="room-stone" aria-labelledby="note-stone-title">
+  <header class="note-heading">
+    <span class="text-glyph" aria-hidden="true">ㄱ</span>
+    <div><h3 id="note-stone-title">돌의 방</h3><p class="note-material">석회암</p></div>
+  </header>
+  <figure class="note-plate">
+    <picture>
+      <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/stone-mobile.jpg">
+      <img src="./assets/gallery/stone.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="가로로 놓인 돌과 세로로 놓인 돌이 꺾여 만나는 ㄱ 조형물.">
+    </picture>
+  </figure>
+  <div class="note-copy">
+    <p>ㄱ의 가로선은 처마가 되고, 세로선은 그 아래의 공간을 받칩니다. 석회암의 무게와 선의 방향을 함께 감상합니다.</p>
+    <button class="note-revisit" type="button" data-note-stop="1" aria-label="돌의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
+  </div>
+</section>
+<section class="text-room" id="room-water" aria-labelledby="note-water-title">
+  <header class="note-heading">
+    <span class="text-glyph" aria-hidden="true">ㅇ</span>
+    <div><h3 id="note-water-title">물의 뜰</h3><p class="note-material">청동 · 수면</p></div>
+  </header>
+  <figure class="note-plate">
+    <picture>
+      <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/water-mobile.jpg">
+      <img src="./assets/gallery/water.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="물 위의 둥근 청동 ㅇ과 수면에 비친 원.">
+    </picture>
+  </figure>
+  <div class="note-copy">
+    <p>ㅇ의 가운데를 비우자 창이 생깁니다. 청동의 둥근 틈 너머로 물과 빛이 이어지고, 비워 둔 곳에 풍경이 담깁니다.</p>
+    <button class="note-revisit" type="button" data-note-stop="2" aria-label="물의 뜰 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
+  </div>
+</section>
+<section class="text-room" id="room-wood" aria-labelledby="note-wood-title">
+  <header class="note-heading">
+    <span class="text-glyph" aria-hidden="true">ㅁ</span>
+    <div><h3 id="note-wood-title">나무의 뜰</h3><p class="note-material">참나무</p></div>
+  </header>
+  <figure class="note-plate">
+    <picture>
+      <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/wood-mobile.jpg">
+      <img src="./assets/gallery/wood.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="가운데가 열려 있어 뒤의 나무 살이 보이는 참나무 ㅁ.">
+    </picture>
+  </figure>
+  <div class="note-copy">
+    <p>ㅁ의 네 방향이 하나의 방을 만듭니다. 가운데를 열면 누구나 드나드는 입구가 됩니다. 닫힌 글자가 열린 공간으로 바뀝니다.</p>
+    <button class="note-revisit" type="button" data-note-stop="3" aria-label="나무의 뜰 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
+  </div>
+</section>
+<section class="text-room" id="room-light" aria-labelledby="note-light-title">
+  <header class="note-heading">
+    <span class="text-glyph" aria-hidden="true">ㅎ</span>
+    <div><h3 id="note-light-title">빛의 방</h3><p class="note-material">황동</p></div>
+  </header>
+  <figure class="note-plate">
+    <picture>
+      <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/light-mobile.jpg">
+      <img src="./assets/gallery/light.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="두 가로획과 고리가 떨어져 있는 황동 ㅎ. 뒤로 세로 조명이 보인다.">
+    </picture>
+  </figure>
+  <div class="note-copy">
+    <p>ㅎ의 가로획과 고리 사이로 세로 조명이 드러납니다. 틈을 통과하는 빛은 황동의 둥근 표면에서 다른 방향으로 흩어집니다.</p>
+    <button class="note-revisit" type="button" data-note-stop="4" aria-label="빛의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
+  </div>
+</section>
+<section class="text-room" id="room-garden" aria-labelledby="note-garden-title">
+  <header class="note-heading">
+    <span class="text-glyph" aria-hidden="true">ㅏ</span>
+    <div><h3 id="note-garden-title">초록의 정원</h3><p class="note-material">녹청 · 식재</p></div>
+  </header>
+  <figure class="note-plate">
+    <picture>
+      <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/garden-mobile.jpg">
+      <img src="./assets/gallery/garden.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="나무 사이에서 오른쪽으로 짧은 획이 뻗은 초록색 ㅏ.">
+    </picture>
+  </figure>
+  <div class="note-copy">
+    <p>ㅏ의 곧은 선은 기둥이 되고, 옆으로 뻗은 선은 정원으로 향하는 길이 됩니다. 식물의 유연한 선과 금속의 곧은 선을 비교해보세요.</p>
+    <button class="note-revisit" type="button" data-note-stop="5" aria-label="초록의 정원 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
+  </div>
+</section>
+<section class="text-room" id="room-quiet" aria-labelledby="note-quiet-title">
+  <header class="note-heading">
+    <span class="text-glyph" aria-hidden="true">ㅅ</span>
+    <div><h3 id="note-quiet-title">고요의 방</h3><p class="note-material">아이보리 도자기</p></div>
+  </header>
+  <figure class="note-plate">
+    <picture>
+      <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/quiet-mobile.jpg">
+      <img src="./assets/gallery/quiet.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="두 획이 꼭대기에서 만나는 ㅅ 조형물과 그 뒤의 한글 건축관.">
+    </picture>
+  </figure>
+  <div class="note-copy">
+    <p>서로 기대는 ㅅ의 두 선. 기울어진 획 아래에 사람이 머물 자리가 생깁니다. 지붕과 글자가 공유하는 형태를 발견해보세요.</p>
+    <button class="note-revisit" type="button" data-note-stop="6" aria-label="고요의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
+  </div>
+</section>
 <section class="text-finale"><h2>이제, 당신의 집.</h2><p>입구가 된 ㅁ, 지붕이 된 ㅅ, 창이 된 ㅇ. 세 조각을 직접 옮겨 집 한 채를 지어보세요.</p><button class="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button></section>
-<footer class="credits" id="credits"><h2>제작 정보</h2><p>한글의 형태를 건축과 풍경으로 확장하는 창작 디지털 전시입니다. 건축물·조형물·텍스처는 코드로 구성했으며, 물리 체험의 무게와 탄성은 전시를 위한 가상 값입니다.</p><p>3D 렌더링: Three.js · MIT License<br>물리 시뮬레이션: Cannon-es · MIT License<br>제목 서체: 고운바탕 · SIL Open Font License</p><details><summary>외부 코드와 서체의 라이선스 고지</summary><div id="license-notices"><p>라이선스 원문은 배포 파일에 함께 포함되어 있습니다.</p><button type="button" id="load-licenses">라이선스 원문 펼치기</button></div></details><p class="credits-note">소리 없이도 온전히 감상할 수 있습니다. 모든 관람과 체험은 이 페이지 안에서 이어집니다.</p></footer></section>
+<footer class="credits" id="credits"><h2>제작 정보</h2><p>한글의 형태를 건축과 풍경으로 확장하는 창작 디지털 전시입니다. 건축물·조형물·텍스처는 코드로 구성했으며, 물리 체험의 무게와 탄성은 전시를 위한 가상 값입니다.</p><p>3D 렌더링: Three.js · MIT License<br>물리 시뮬레이션: Cannon-es · MIT License<br>전시 노트 애니메이션: Motion Mini · MIT License<br>제목 서체: 고운바탕 · SIL Open Font License</p><details><summary>외부 코드와 서체의 라이선스 고지</summary><div id="license-notices"><p>라이선스 원문은 배포 파일에 함께 포함되어 있습니다.</p><button type="button" id="load-licenses">라이선스 원문 펼치기</button></div></details><p class="credits-note">소리 없이도 온전히 감상할 수 있습니다. 모든 관람과 체험은 이 페이지 안에서 이어집니다.</p></footer>
+</div>
+</section>
+<dialog class="structure-dialog" id="structure-dialog" aria-labelledby="structure-title" aria-describedby="structure-instruction">
+  <header class="structure-header">
+    <div>
+      <h2 id="structure-title" tabindex="-1">글자가 집이 되는 구조</h2>
+      <p id="structure-instruction">글자를 눌러 집에서 어떤 역할을 하는지 살펴보세요.</p>
+    </div>
+    <button class="dialog-close" id="structure-close" type="button" aria-label="구조 모형 닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  </header>
+  <div class="structure-layout">
+    <figure class="structure-figure" id="structure-figure" data-selection="whole">
+      <!-- house-structure-svg:start -->
+      <svg class="structure-model" viewBox="0 -12 706 502" role="img" aria-labelledby="house-model-title house-model-description">
+        <title id="house-model-title">한글 건축관 조립 모형</title>
+        <desc id="house-model-description">석재 처마와 기둥, 참나무 입구, 두 획으로 된 지붕과 둥근 창을 비스듬히 내려다본 모습.</desc>
+        <defs><filter id="house-model-shadow" x="-25%" y="-60%" width="150%" height="220%"><feGaussianBlur stdDeviation="12"/></filter></defs>
+        <ellipse cx="356" cy="355" rx="270" ry="55" fill="#000" opacity=".51" filter="url(#house-model-shadow)"/>
+        <g class="structure-assembled">
+          <path d="M479.03 117.75L479.03 216.21L487.98 223.1L487.98 124.64Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M487.98 223.1L502.9 218.97L502.9 120.51L487.98 124.64Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M493.96 113.62L479.03 117.75L487.98 124.64L502.9 120.51Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M368.11 150.94L368.11 245.41L378.13 253.13L378.13 158.67Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M378.13 253.13L391 249.57L391 155.1L378.13 158.67Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M491.16 130.39L491.16 214.21L596.05 295.01L596.05 211.19Z" fill="rgb(87 94 83)" opacity=".22" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M380.97 147.38L368.11 150.94L378.13 158.67L391 155.1Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M242.86 281.68L374.09 245.36L374.09 162.86L242.86 199.19Z" fill="rgb(95 102 91)" opacity=".22" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M491.81 130.21L491.16 130.39L596.05 211.19L596.69 211.01Z" fill="rgb(101 109 96)" opacity=".22" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M493.03 97.61L478.11 101.74L593.79 190.85L608.71 186.72Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M478.11 101.74L478.11 116.37L593.79 205.49L593.79 190.85Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M373.7 162.57L242.47 198.89L242.86 199.19L374.09 162.86Z" fill="rgb(101 109 96)" opacity=".22" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M374.47 156.18L243.24 192.5L243.63 192.8L374.86 156.47Z" fill="rgb(193 163 113)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M243.63 193.46L374.86 157.14L374.86 156.47L243.63 192.8Z" fill="rgb(181 153 106)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M382.03 132.48L222.5 176.64L232.98 184.72L392.52 140.56Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M242.47 198.89L242.47 281.38L242.86 281.68L242.86 199.19Z" fill="rgb(87 94 83)" opacity=".22" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M232.98 199.35L392.52 155.19L392.52 140.56L232.98 184.72Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M224.01 190.83L224.01 285.29L234.04 293.02L234.04 198.55Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M234.04 293.02L246.9 289.46L246.9 194.99L234.04 198.55Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M544.58 136.38L423.64 169.86L439.83 182.33L560.77 148.86Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M504.64 195.88L36.33 325.51L201.36 452.65L669.67 323.02Z" fill="rgb(77 68 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M439.83 198.3L560.77 164.82L560.77 148.86L439.83 182.33Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M502.06 189.72L46.62 315.79L203.94 436.99L659.38 310.92Z" fill="rgb(173 164 141)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M596.05 295.01L596.69 294.83L596.69 211.01L596.05 211.19Z" fill="rgb(95 102 91)" opacity=".22" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M500.13 192.17L56.26 315.03L205.87 430.29L649.74 307.42Z" fill="rgb(108 99 79)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M243.24 192.5L243.24 193.17L243.63 193.46L243.63 192.8Z" fill="rgb(166 141 98)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M236.88 187.27L224.01 190.83L234.04 198.55L246.9 194.99Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M583.92 198.55L583.92 297.01L592.86 303.9L592.86 205.44Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M575.78 270.64L573.71 273.18L587.29 283.63L589.36 281.1Z" fill="rgb(179 170 146)" data-house-part="ieung" stroke="rgb(179 170 146)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M577.68 267.98L575.78 270.64L589.36 281.1L591.25 278.43Z" fill="rgb(177 168 145)" data-house-part="ieung" stroke="rgb(177 168 145)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M573.71 273.18L571.49 275.56L585.06 286.01L587.29 283.63Z" fill="rgb(180 171 147)" data-house-part="ieung" stroke="rgb(180 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M579.39 265.2L577.68 267.98L591.25 278.43L592.96 275.66Z" fill="rgb(176 167 143)" data-house-part="ieung" stroke="rgb(176 167 143)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M571.49 275.56L569.12 277.77L582.69 288.23L585.06 286.01Z" fill="rgb(181 171 147)" data-house-part="ieung" stroke="rgb(181 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M580.89 262.34L579.39 265.2L592.96 275.66L594.47 272.8Z" fill="rgb(173 164 141)" data-house-part="ieung" stroke="rgb(173 164 141)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M569.12 277.77L566.63 279.8L580.21 290.26L582.69 288.23Z" fill="rgb(181 171 147)" data-house-part="ieung" stroke="rgb(181 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M582.19 259.41L580.89 262.34L594.47 272.8L595.76 269.86Z" fill="rgb(171 162 139)" data-house-part="ieung" stroke="rgb(171 162 139)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M592.86 303.9L607.79 299.77L607.79 201.31L592.86 205.44Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M566.63 279.8L564.04 281.63L577.61 292.09L580.21 290.26Z" fill="rgb(180 171 147)" data-house-part="ieung" stroke="rgb(180 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M583.26 256.43L582.19 259.41L595.76 269.86L596.84 266.88Z" fill="rgb(167 159 136)" data-house-part="ieung" stroke="rgb(167 159 136)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M564.04 281.63L561.36 283.24L574.94 293.7L577.61 292.09Z" fill="rgb(179 170 146)" data-house-part="ieung" stroke="rgb(179 170 146)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M584.11 253.43L583.26 256.43L596.84 266.88L597.68 263.88Z" fill="rgb(164 155 134)" data-house-part="ieung" stroke="rgb(164 155 134)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M561.36 283.24L558.62 284.63L572.2 295.09L574.94 293.7Z" fill="rgb(178 169 145)" data-house-part="ieung" stroke="rgb(178 169 145)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M584.71 250.43L584.11 253.43L597.68 263.88L598.29 260.88Z" fill="rgb(160 152 130)" data-house-part="ieung" stroke="rgb(160 152 130)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M558.62 284.63L555.84 285.78L569.42 296.23L572.2 295.09Z" fill="rgb(177 167 144)" data-house-part="ieung" stroke="rgb(177 167 144)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M585.08 247.45L584.71 250.43L598.29 260.88L598.65 257.9Z" fill="rgb(156 148 127)" data-house-part="ieung" stroke="rgb(156 148 127)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M222.5 176.64L222.5 191.27L232.98 199.35L232.98 184.72Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M555.84 285.78L553.04 286.68L566.61 297.14L569.42 296.23Z" fill="rgb(174 165 142)" data-house-part="ieung" stroke="rgb(174 165 142)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M585.2 244.52L585.08 247.45L598.65 257.9L598.78 254.97Z" fill="rgb(152 144 124)" data-house-part="ieung" stroke="rgb(152 144 124)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M553.04 286.68L550.24 287.33L563.81 297.79L566.61 297.14Z" fill="rgb(172 163 140)" data-house-part="ieung" stroke="rgb(172 163 140)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M585.08 241.65L585.2 244.52L598.78 254.97L598.65 252.11Z" fill="rgb(147 139 120)" data-house-part="ieung" stroke="rgb(147 139 120)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M550.24 287.33L547.45 287.72L561.03 298.18L563.81 297.79Z" fill="rgb(169 160 138)" data-house-part="ieung" stroke="rgb(169 160 138)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M584.71 238.87L585.08 241.65L598.65 252.11L598.29 249.33Z" fill="rgb(142 135 116)" data-house-part="ieung" stroke="rgb(142 135 116)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M423.64 169.86L423.64 185.82L439.83 198.3L439.83 182.33Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M547.45 287.72L544.71 287.85L558.29 298.31L561.03 298.18Z" fill="rgb(166 157 135)" data-house-part="ieung" stroke="rgb(166 157 135)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M584.11 236.21L584.71 238.87L598.29 249.33L597.68 246.67Z" fill="rgb(137 130 112)" data-house-part="ieung" stroke="rgb(137 130 112)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M544.71 287.85L542.04 287.72L555.61 298.18L558.29 298.31Z" fill="rgb(162 154 132)" data-house-part="ieung" stroke="rgb(162 154 132)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M583.26 233.68L584.11 236.21L597.68 246.67L596.84 244.13Z" fill="rgb(132 125 108)" data-house-part="ieung" stroke="rgb(132 125 108)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M542.04 287.72L539.45 287.33L553.02 297.78L555.61 298.18Z" fill="rgb(158 150 129)" data-house-part="ieung" stroke="rgb(158 150 129)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M582.19 231.29L583.26 233.68L596.84 244.13L595.76 241.75Z" fill="rgb(127 120 103)" data-house-part="ieung" stroke="rgb(127 120 103)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M539.45 287.33L536.96 286.68L550.53 297.13L553.02 297.78Z" fill="rgb(154 146 125)" data-house-part="ieung" stroke="rgb(154 146 125)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M580.89 229.08L582.19 231.29L595.76 241.75L594.47 239.53Z" fill="rgb(122 115 99)" data-house-part="ieung" stroke="rgb(122 115 99)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M536.96 286.68L534.59 285.77L548.16 296.23L550.53 297.13Z" fill="rgb(149 142 122)" data-house-part="ieung" stroke="rgb(149 142 122)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M579.39 227.05L580.89 229.08L594.47 239.53L592.96 237.5Z" fill="rgb(120 114 98)" data-house-part="ieung" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M598.84 194.42L583.92 198.55L592.86 205.44L607.79 201.31Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M534.59 285.77L532.36 284.62L545.94 295.08L548.16 296.23Z" fill="rgb(145 137 118)" data-house-part="ieung" stroke="rgb(145 137 118)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M577.68 225.22L579.39 227.05L592.96 237.5L591.25 235.67Z" fill="rgb(120 114 98)" data-house-part="ieung" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M532.36 284.62L530.3 283.23L543.87 293.69L545.94 295.08Z" fill="rgb(140 132 114)" data-house-part="ieung" stroke="rgb(140 132 114)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M575.78 223.6L577.68 225.22L591.25 235.67L589.36 234.06Z" fill="rgb(120 114 98)" data-house-part="ieung" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M514.01 298.09L517.01 300.65L530.59 311.1L527.58 308.54Z" fill="rgb(120 114 98)" data-house-part="ieung" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M589.06 206.19L585.79 203.99L599.36 214.45L602.64 216.65Z" fill="rgb(140 132 114)" data-house-part="ieung" stroke="rgb(140 132 114)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M511.31 295.19L514.01 298.09L527.58 308.54L524.88 305.65Z" fill="rgb(120 114 98)" data-house-part="ieung" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M585.79 203.99L582.26 202.17L595.83 212.63L599.36 214.45Z" fill="rgb(145 137 118)" data-house-part="ieung" stroke="rgb(145 137 118)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M508.92 291.98L511.31 295.19L524.88 305.65L522.49 302.43Z" fill="rgb(120 114 98)" data-house-part="ieung" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M593.79 205.49L608.71 201.36L608.71 186.72L593.79 190.85Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M582.26 202.17L578.51 200.74L592.09 211.19L595.83 212.63Z" fill="rgb(149 142 122)" data-house-part="ieung" stroke="rgb(149 142 122)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M413.72 137.27L313.37 95.86L424.42 181.41L524.77 222.82Z" fill="rgb(126 87 53)" data-house-part="siot" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M617.56 249.77L617.37 245.23L616.79 240.84L615.82 236.62L614.49 232.6L612.79 228.83L610.73 225.32L608.35 222.1L605.64 219.2L602.64 216.65L599.36 214.45L595.83 212.63L592.09 211.19L588.14 210.16L584.04 209.54L579.8 209.33L575.46 209.54L571.05 210.16L566.61 211.19L562.17 212.62L557.77 214.44L553.43 216.63L549.19 219.19L545.08 222.08L541.14 225.3L537.39 228.8L533.86 232.58L530.59 236.59L527.58 240.81L524.88 245.21L522.49 249.74L520.44 254.39L518.74 259.11L517.4 263.86L516.44 268.61L515.86 273.33L515.66 277.98L515.86 282.52L516.44 286.91L517.4 291.13L518.74 295.15L520.44 298.92L522.49 302.43L524.88 305.65L527.58 308.54L530.59 311.1L533.86 313.3L537.39 315.12L541.14 316.55L545.08 317.59L549.19 318.21L553.43 318.42L557.77 318.21L562.17 317.59L566.61 316.56L571.05 315.13L575.46 313.31L579.8 311.12L584.04 308.56L588.14 305.67L592.09 302.45L595.83 298.94L599.36 295.17L602.64 291.16L605.64 286.94L608.35 282.54L610.73 278.01L612.79 273.36L614.49 268.64L615.82 263.89L616.79 259.14L617.37 254.42ZM598.78 254.97L598.65 257.9L598.29 260.88L597.68 263.88L596.84 266.88L595.76 269.86L594.47 272.8L592.96 275.66L591.25 278.43L589.36 281.1L587.29 283.63L585.06 286.01L582.69 288.23L580.21 290.26L577.61 292.09L574.94 293.7L572.2 295.09L569.42 296.23L566.61 297.14L563.81 297.79L561.03 298.18L558.29 298.31L555.61 298.18L553.02 297.78L550.53 297.13L548.16 296.23L545.94 295.08L543.87 293.69L541.97 292.08L540.27 290.25L538.76 288.22L537.46 286L536.39 283.62L535.54 281.08L534.94 278.42L534.57 275.64L534.45 272.78L534.57 269.84L534.94 266.87L535.54 263.87L536.39 260.86L537.46 257.89L538.76 254.95L540.27 252.09L541.97 249.31L543.87 246.65L545.94 244.12L548.16 241.73L550.53 239.52L553.02 237.49L555.61 235.66L558.29 234.05L561.03 232.66L563.81 231.51L566.61 230.61L569.42 229.96L572.2 229.57L574.94 229.44L577.61 229.57L580.21 229.97L582.69 230.62L585.06 231.52L587.29 232.67L589.36 234.06L591.25 235.67L592.96 237.5L594.47 239.53L595.76 241.75L596.84 244.13L597.68 246.67L598.29 249.33L598.65 252.11Z" fill="rgb(163 154 132)" data-house-part="ieung" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M506.86 288.47L508.92 291.98L522.49 302.43L520.44 298.92Z" fill="rgb(122 115 99)" data-house-part="ieung" stroke="rgb(122 115 99)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M578.51 200.74L574.57 199.71L588.14 210.16L592.09 211.19Z" fill="rgb(154 146 125)" data-house-part="ieung" stroke="rgb(154 146 125)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M422.86 124.71L309.64 76.22L427.64 167.12L540.86 215.61Z" fill="rgb(148 140 120)" data-house-part="siot" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M505.16 284.69L506.86 288.47L520.44 298.92L518.74 295.15Z" fill="rgb(127 120 103)" data-house-part="ieung" stroke="rgb(127 120 103)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M574.57 199.71L570.46 199.08L584.04 209.54L588.14 210.16Z" fill="rgb(158 150 129)" data-house-part="ieung" stroke="rgb(158 150 129)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M503.83 280.68L505.16 284.69L518.74 295.15L517.4 291.13Z" fill="rgb(132 125 108)" data-house-part="ieung" stroke="rgb(132 125 108)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M570.46 199.08L566.23 198.88L579.8 209.33L584.04 209.54Z" fill="rgb(162 154 132)" data-house-part="ieung" stroke="rgb(162 154 132)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.87 276.46L503.83 280.68L517.4 291.13L516.44 286.91Z" fill="rgb(137 130 112)" data-house-part="ieung" stroke="rgb(137 130 112)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M566.23 198.88L561.89 199.08L575.46 209.54L579.8 209.33Z" fill="rgb(166 157 135)" data-house-part="ieung" stroke="rgb(166 157 135)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.29 272.06L502.87 276.46L516.44 286.91L515.86 282.52Z" fill="rgb(142 135 116)" data-house-part="ieung" stroke="rgb(142 135 116)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M561.89 199.08L557.48 199.7L571.05 210.16L575.46 209.54Z" fill="rgb(169 160 138)" data-house-part="ieung" stroke="rgb(169 160 138)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M91.22 210.52L91.22 320.95L102.32 329.5L102.32 219.07Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M502.09 267.52L502.29 272.06L515.86 282.52L515.66 277.98Z" fill="rgb(147 139 120)" data-house-part="ieung" stroke="rgb(147 139 120)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M557.48 199.7L553.04 200.73L566.61 211.19L571.05 210.16Z" fill="rgb(172 163 140)" data-house-part="ieung" stroke="rgb(172 163 140)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.29 262.88L502.09 267.52L515.66 277.98L515.86 273.33Z" fill="rgb(152 144 124)" data-house-part="ieung" stroke="rgb(152 144 124)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M102.32 329.5L120.85 324.37L120.85 213.94L102.32 219.07Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M553.04 200.73L548.6 202.16L562.17 212.62L566.61 211.19Z" fill="rgb(174 165 142)" data-house-part="ieung" stroke="rgb(174 165 142)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.87 258.16L502.29 262.88L515.86 273.33L516.44 268.61Z" fill="rgb(156 148 127)" data-house-part="ieung" stroke="rgb(156 148 127)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M548.6 202.16L544.19 203.98L557.77 214.44L562.17 212.62Z" fill="rgb(177 167 144)" data-house-part="ieung" stroke="rgb(177 167 144)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M503.83 253.4L502.87 258.16L516.44 268.61L517.4 263.86Z" fill="rgb(160 152 130)" data-house-part="ieung" stroke="rgb(160 152 130)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M544.19 203.98L539.85 206.18L553.43 216.63L557.77 214.44Z" fill="rgb(178 169 145)" data-house-part="ieung" stroke="rgb(178 169 145)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M505.16 248.65L503.83 253.4L517.4 263.86L518.74 259.11Z" fill="rgb(164 155 134)" data-house-part="ieung" stroke="rgb(164 155 134)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M539.85 206.18L535.61 208.73L549.19 219.19L553.43 216.63Z" fill="rgb(179 170 146)" data-house-part="ieung" stroke="rgb(179 170 146)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M506.86 243.93L505.16 248.65L518.74 259.11L520.44 254.39Z" fill="rgb(167 159 136)" data-house-part="ieung" stroke="rgb(167 159 136)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M535.61 208.73L531.51 211.63L545.08 222.08L549.19 219.19Z" fill="rgb(180 171 147)" data-house-part="ieung" stroke="rgb(180 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M508.92 239.29L506.86 243.93L520.44 254.39L522.49 249.74Z" fill="rgb(171 162 139)" data-house-part="ieung" stroke="rgb(171 162 139)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M531.51 211.63L527.57 214.84L541.14 225.3L545.08 222.08Z" fill="rgb(181 171 147)" data-house-part="ieung" stroke="rgb(181 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M511.31 234.75L508.92 239.29L522.49 249.74L524.88 245.21Z" fill="rgb(173 164 141)" data-house-part="ieung" stroke="rgb(173 164 141)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M527.57 214.84L523.82 218.35L537.39 228.8L541.14 225.3Z" fill="rgb(181 171 147)" data-house-part="ieung" stroke="rgb(181 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M514.01 230.35L511.31 234.75L524.88 245.21L527.58 240.81Z" fill="rgb(176 167 143)" data-house-part="ieung" stroke="rgb(176 167 143)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M523.82 218.35L520.29 222.12L533.86 232.58L537.39 228.8Z" fill="rgb(180 171 147)" data-house-part="ieung" stroke="rgb(180 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M517.01 226.13L514.01 230.35L527.58 240.81L530.59 236.59Z" fill="rgb(177 168 145)" data-house-part="ieung" stroke="rgb(177 168 145)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M520.29 222.12L517.01 226.13L530.59 236.59L533.86 232.58Z" fill="rgb(179 170 146)" data-house-part="ieung" stroke="rgb(179 170 146)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M476.38 239.2L476.38 333.67L491.03 344.96L491.03 250.49Z" fill="rgb(127 88 54)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M109.74 205.39L91.22 210.52L102.32 219.07L120.85 213.94Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M313.37 95.86L311.94 98.47L422.99 184.02L424.42 181.41Z" fill="rgb(148 102 63)" data-house-part="siot" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M491.03 344.96L508.53 340.11L508.53 245.65L491.03 250.49Z" fill="rgb(138 96 59)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M493.88 323.1L336.92 366.55L351.57 377.84L508.53 334.39Z" fill="rgb(147 102 62)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M311.94 96.26L211.59 193.22L322.64 278.77L422.99 181.81Z" fill="rgb(153 106 65)" data-house-part="siot" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M493.88 234.36L476.38 239.2L491.03 250.49L508.53 245.65Z" fill="rgb(147 102 62)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M351.57 383.69L508.53 340.24L508.53 334.39L351.57 377.84Z" fill="rgb(138 96 59)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M211.59 193.22L213.01 195.04L324.07 280.59L322.64 278.77Z" fill="rgb(102 71 43)" data-house-part="siot" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M309.64 76.22L196.43 187.39L314.42 278.29L427.64 167.12Z" fill="rgb(180 171 147)" data-house-part="siot" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M598.65 315.05L243.56 413.34L244.1 413.76L599.19 315.46Z" fill="rgb(193 163 113)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M244.1 414.42L599.19 316.13L599.19 315.46L244.1 413.76Z" fill="rgb(181 153 106)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M109.43 302.41L90.91 307.54L211.21 400.22L229.74 395.09Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M205.87 432.42L649.74 309.55L649.74 307.42L205.87 430.29Z" fill="rgb(101 93 75)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M90.91 307.54L90.91 320.31L211.21 412.99L211.21 400.22Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M201.36 464.89L669.67 335.26L669.67 323.02L201.36 452.65Z" fill="rgb(72 64 50)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M203.94 447.63L659.38 321.56L659.38 310.92L203.94 436.99Z" fill="rgb(163 154 132)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M36.33 325.51L36.33 337.75L201.36 464.89L201.36 452.65Z" fill="rgb(66 59 46)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M538.45 340.89L332.6 397.87L348.03 409.75L553.88 352.77Z" fill="rgb(173 164 141)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M46.62 315.79L46.62 326.44L203.94 447.63L203.94 436.99Z" fill="rgb(149 142 122)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M56.26 315.03L56.26 317.16L205.87 432.42L205.87 430.29Z" fill="rgb(93 85 69)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M422.99 184.02L523.34 225.43L524.77 222.82L424.42 181.41Z" fill="rgb(138 96 59)" data-house-part="siot" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M478.89 236.62L347.66 272.94L348.05 273.24L479.28 236.92Z" fill="rgb(193 163 113)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M348.05 273.91L479.28 237.58L479.28 236.92L348.05 273.24Z" fill="rgb(181 153 106)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M348.03 412.95L553.88 355.97L553.88 352.77L348.03 409.75Z" fill="rgb(163 154 132)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M546.93 350.62L341.08 407.6L356.51 419.48L562.36 362.5Z" fill="rgb(173 164 141)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M552.4 353.01L349.12 409.27L349.5 409.57L552.78 353.3Z" fill="rgb(193 163 113)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M349.5 410.05L552.78 353.78L552.78 353.3L349.5 409.57Z" fill="rgb(181 153 106)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M336.92 366.55L336.92 372.4L351.57 383.69L351.57 377.84Z" fill="rgb(127 88 54)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M207.93 176.94L94.71 208.28L205.77 293.83L318.98 262.49Z" fill="rgb(173 164 141)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M356.51 422.67L562.36 365.69L562.36 362.5L356.51 419.48Z" fill="rgb(163 154 132)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M555.42 360.35L349.57 417.33L364.99 429.21L570.84 372.23Z" fill="rgb(173 164 141)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M560.88 362.73L357.6 419L357.99 419.3L561.26 363.03Z" fill="rgb(193 163 113)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M357.99 419.78L561.26 363.51L561.26 363.03L357.99 419.3Z" fill="rgb(181 153 106)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M493.88 217.2L336.92 260.64L351.57 271.93L508.53 228.48Z" fill="rgb(147 102 62)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M364.99 432.4L570.84 375.42L570.84 372.23L364.99 429.21Z" fill="rgb(163 154 132)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M569.36 372.46L366.09 428.73L366.47 429.03L569.75 372.76Z" fill="rgb(193 163 113)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M366.47 429.51L569.75 373.24L569.75 372.76L366.47 429.03Z" fill="rgb(181 153 106)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M351.57 290.56L508.53 247.11L508.53 228.48L351.57 271.93Z" fill="rgb(138 96 59)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M336.92 277.81L336.92 372.27L351.57 383.56L351.57 289.09Z" fill="rgb(127 88 54)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M347.66 272.94L347.66 273.61L348.05 273.91L348.05 273.24Z" fill="rgb(166 141 98)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M351.57 383.56L369.07 378.72L369.07 284.25L351.57 289.09Z" fill="rgb(138 96 59)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M94.71 208.28L94.71 222.12L205.77 307.67L205.77 293.83Z" fill="rgb(149 142 122)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M292.38 273.4L292.38 378.51L305.96 388.97L305.96 283.86Z" fill="rgb(149 142 122)" data-house-part="giyeok" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M332.6 397.87L332.6 401.06L348.03 412.95L348.03 409.75Z" fill="rgb(149 142 122)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M354.41 272.96L336.92 277.81L351.57 289.09L369.07 284.25Z" fill="rgb(147 102 62)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M324.07 280.59L424.42 183.63L422.99 181.81L322.64 278.77Z" fill="rgb(138 96 59)" data-house-part="siot" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M341.08 407.6L341.08 410.79L356.51 422.67L356.51 419.48Z" fill="rgb(149 142 122)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M349.12 409.27L349.12 409.75L349.5 410.05L349.5 409.57Z" fill="rgb(166 141 98)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M336.92 260.64L336.92 279.27L351.57 290.56L351.57 271.93Z" fill="rgb(127 88 54)" data-house-part="mieum" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M293.09 369.87L230.57 387.17L242.6 396.44L305.12 379.13Z" fill="rgb(58 53 44)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M349.57 417.33L349.57 420.52L364.99 432.4L364.99 429.21Z" fill="rgb(149 142 122)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M357.6 419L357.6 419.48L357.99 419.78L357.99 419.3Z" fill="rgb(166 141 98)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M211.21 412.99L229.74 407.86L229.74 395.09L211.21 400.22Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M243.56 413.34L243.56 414L244.1 414.42L244.1 413.76Z" fill="rgb(166 141 98)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M366.09 428.73L366.09 429.21L366.47 429.51L366.47 429.03Z" fill="rgb(166 141 98)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M224.07 420.2L305.12 397.76L305.12 379.13L242.6 396.44L242.6 341.89L305.12 324.58L305.12 305.96L224.07 328.39Z" fill="rgb(54 49 41)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M205.77 307.67L318.98 276.33L318.98 262.49L205.77 293.83Z" fill="rgb(163 154 132)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M212.04 319.12L212.04 410.93L224.07 420.2L224.07 328.39Z" fill="rgb(50 45 38)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M312.97 246.42L198.46 278.11L212.04 288.57L326.54 256.87Z" fill="rgb(173 164 141)" data-house-part="giyeok" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M293.09 296.69L212.04 319.12L224.07 328.39L305.12 305.96Z" fill="rgb(58 53 44)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M198.46 278.11L198.46 299.4L212.04 309.86L212.04 288.57Z" fill="rgb(149 142 122)" data-house-part="giyeok" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+        </g>
+        <g class="structure-lifted" data-lifted-part="giyeok" aria-hidden="true">
+          <path d="M292.38 273.4L292.38 378.51L305.96 388.97L305.96 283.86Z" fill="rgb(149 142 122)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M312.97 246.42L198.46 278.11L212.04 288.57L326.54 256.87Z" fill="rgb(173 164 141)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M198.46 278.11L198.46 299.4L212.04 309.86L212.04 288.57Z" fill="rgb(149 142 122)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+        </g>
+        <g class="structure-lifted" data-lifted-part="mieum" aria-hidden="true">
+          <path d="M476.38 239.2L476.38 333.67L491.03 344.96L491.03 250.49Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M491.03 344.96L508.53 340.11L508.53 245.65L491.03 250.49Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M493.88 323.1L336.92 366.55L351.57 377.84L508.53 334.39Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M493.88 234.36L476.38 239.2L491.03 250.49L508.53 245.65Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M351.57 383.69L508.53 340.24L508.53 334.39L351.57 377.84Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M336.92 366.55L336.92 372.4L351.57 383.69L351.57 377.84Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M493.88 217.2L336.92 260.64L351.57 271.93L508.53 228.48Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M351.57 290.56L508.53 247.11L508.53 228.48L351.57 271.93Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M336.92 277.81L336.92 372.27L351.57 383.56L351.57 289.09Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M351.57 383.56L369.07 378.72L369.07 284.25L351.57 289.09Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M354.41 272.96L336.92 277.81L351.57 289.09L369.07 284.25Z" fill="rgb(147 102 62)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M336.92 260.64L336.92 279.27L351.57 290.56L351.57 271.93Z" fill="rgb(127 88 54)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+        </g>
+        <g class="structure-lifted" data-lifted-part="siot" aria-hidden="true">
+          <path d="M413.72 137.27L313.37 95.86L424.42 181.41L524.77 222.82Z" fill="rgb(126 87 53)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M422.86 124.71L309.64 76.22L427.64 167.12L540.86 215.61Z" fill="rgb(148 140 120)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M313.37 95.86L311.94 98.47L422.99 184.02L424.42 181.41Z" fill="rgb(148 102 63)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M311.94 96.26L211.59 193.22L322.64 278.77L422.99 181.81Z" fill="rgb(153 106 65)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M211.59 193.22L213.01 195.04L324.07 280.59L322.64 278.77Z" fill="rgb(102 71 43)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M309.64 76.22L196.43 187.39L314.42 278.29L427.64 167.12Z" fill="rgb(180 171 147)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M422.99 184.02L523.34 225.43L524.77 222.82L424.42 181.41Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M324.07 280.59L424.42 183.63L422.99 181.81L322.64 278.77Z" fill="rgb(138 96 59)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+        </g>
+        <g class="structure-lifted" data-lifted-part="ieung" aria-hidden="true">
+          <path d="M575.78 270.64L573.71 273.18L587.29 283.63L589.36 281.1Z" fill="rgb(179 170 146)" stroke="rgb(179 170 146)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M577.68 267.98L575.78 270.64L589.36 281.1L591.25 278.43Z" fill="rgb(177 168 145)" stroke="rgb(177 168 145)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M573.71 273.18L571.49 275.56L585.06 286.01L587.29 283.63Z" fill="rgb(180 171 147)" stroke="rgb(180 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M579.39 265.2L577.68 267.98L591.25 278.43L592.96 275.66Z" fill="rgb(176 167 143)" stroke="rgb(176 167 143)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M571.49 275.56L569.12 277.77L582.69 288.23L585.06 286.01Z" fill="rgb(181 171 147)" stroke="rgb(181 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M580.89 262.34L579.39 265.2L592.96 275.66L594.47 272.8Z" fill="rgb(173 164 141)" stroke="rgb(173 164 141)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M569.12 277.77L566.63 279.8L580.21 290.26L582.69 288.23Z" fill="rgb(181 171 147)" stroke="rgb(181 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M582.19 259.41L580.89 262.34L594.47 272.8L595.76 269.86Z" fill="rgb(171 162 139)" stroke="rgb(171 162 139)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M566.63 279.8L564.04 281.63L577.61 292.09L580.21 290.26Z" fill="rgb(180 171 147)" stroke="rgb(180 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M583.26 256.43L582.19 259.41L595.76 269.86L596.84 266.88Z" fill="rgb(167 159 136)" stroke="rgb(167 159 136)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M564.04 281.63L561.36 283.24L574.94 293.7L577.61 292.09Z" fill="rgb(179 170 146)" stroke="rgb(179 170 146)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M584.11 253.43L583.26 256.43L596.84 266.88L597.68 263.88Z" fill="rgb(164 155 134)" stroke="rgb(164 155 134)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M561.36 283.24L558.62 284.63L572.2 295.09L574.94 293.7Z" fill="rgb(178 169 145)" stroke="rgb(178 169 145)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M584.71 250.43L584.11 253.43L597.68 263.88L598.29 260.88Z" fill="rgb(160 152 130)" stroke="rgb(160 152 130)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M558.62 284.63L555.84 285.78L569.42 296.23L572.2 295.09Z" fill="rgb(177 167 144)" stroke="rgb(177 167 144)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M585.08 247.45L584.71 250.43L598.29 260.88L598.65 257.9Z" fill="rgb(156 148 127)" stroke="rgb(156 148 127)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M555.84 285.78L553.04 286.68L566.61 297.14L569.42 296.23Z" fill="rgb(174 165 142)" stroke="rgb(174 165 142)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M585.2 244.52L585.08 247.45L598.65 257.9L598.78 254.97Z" fill="rgb(152 144 124)" stroke="rgb(152 144 124)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M553.04 286.68L550.24 287.33L563.81 297.79L566.61 297.14Z" fill="rgb(172 163 140)" stroke="rgb(172 163 140)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M585.08 241.65L585.2 244.52L598.78 254.97L598.65 252.11Z" fill="rgb(147 139 120)" stroke="rgb(147 139 120)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M550.24 287.33L547.45 287.72L561.03 298.18L563.81 297.79Z" fill="rgb(169 160 138)" stroke="rgb(169 160 138)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M584.71 238.87L585.08 241.65L598.65 252.11L598.29 249.33Z" fill="rgb(142 135 116)" stroke="rgb(142 135 116)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M547.45 287.72L544.71 287.85L558.29 298.31L561.03 298.18Z" fill="rgb(166 157 135)" stroke="rgb(166 157 135)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M584.11 236.21L584.71 238.87L598.29 249.33L597.68 246.67Z" fill="rgb(137 130 112)" stroke="rgb(137 130 112)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M544.71 287.85L542.04 287.72L555.61 298.18L558.29 298.31Z" fill="rgb(162 154 132)" stroke="rgb(162 154 132)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M583.26 233.68L584.11 236.21L597.68 246.67L596.84 244.13Z" fill="rgb(132 125 108)" stroke="rgb(132 125 108)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M542.04 287.72L539.45 287.33L553.02 297.78L555.61 298.18Z" fill="rgb(158 150 129)" stroke="rgb(158 150 129)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M582.19 231.29L583.26 233.68L596.84 244.13L595.76 241.75Z" fill="rgb(127 120 103)" stroke="rgb(127 120 103)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M539.45 287.33L536.96 286.68L550.53 297.13L553.02 297.78Z" fill="rgb(154 146 125)" stroke="rgb(154 146 125)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M580.89 229.08L582.19 231.29L595.76 241.75L594.47 239.53Z" fill="rgb(122 115 99)" stroke="rgb(122 115 99)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M536.96 286.68L534.59 285.77L548.16 296.23L550.53 297.13Z" fill="rgb(149 142 122)" stroke="rgb(149 142 122)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M579.39 227.05L580.89 229.08L594.47 239.53L592.96 237.5Z" fill="rgb(120 114 98)" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M534.59 285.77L532.36 284.62L545.94 295.08L548.16 296.23Z" fill="rgb(145 137 118)" stroke="rgb(145 137 118)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M577.68 225.22L579.39 227.05L592.96 237.5L591.25 235.67Z" fill="rgb(120 114 98)" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M532.36 284.62L530.3 283.23L543.87 293.69L545.94 295.08Z" fill="rgb(140 132 114)" stroke="rgb(140 132 114)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M575.78 223.6L577.68 225.22L591.25 235.67L589.36 234.06Z" fill="rgb(120 114 98)" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M514.01 298.09L517.01 300.65L530.59 311.1L527.58 308.54Z" fill="rgb(120 114 98)" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M589.06 206.19L585.79 203.99L599.36 214.45L602.64 216.65Z" fill="rgb(140 132 114)" stroke="rgb(140 132 114)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M511.31 295.19L514.01 298.09L527.58 308.54L524.88 305.65Z" fill="rgb(120 114 98)" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M585.79 203.99L582.26 202.17L595.83 212.63L599.36 214.45Z" fill="rgb(145 137 118)" stroke="rgb(145 137 118)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M508.92 291.98L511.31 295.19L524.88 305.65L522.49 302.43Z" fill="rgb(120 114 98)" stroke="rgb(120 114 98)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M582.26 202.17L578.51 200.74L592.09 211.19L595.83 212.63Z" fill="rgb(149 142 122)" stroke="rgb(149 142 122)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M617.56 249.77L617.37 245.23L616.79 240.84L615.82 236.62L614.49 232.6L612.79 228.83L610.73 225.32L608.35 222.1L605.64 219.2L602.64 216.65L599.36 214.45L595.83 212.63L592.09 211.19L588.14 210.16L584.04 209.54L579.8 209.33L575.46 209.54L571.05 210.16L566.61 211.19L562.17 212.62L557.77 214.44L553.43 216.63L549.19 219.19L545.08 222.08L541.14 225.3L537.39 228.8L533.86 232.58L530.59 236.59L527.58 240.81L524.88 245.21L522.49 249.74L520.44 254.39L518.74 259.11L517.4 263.86L516.44 268.61L515.86 273.33L515.66 277.98L515.86 282.52L516.44 286.91L517.4 291.13L518.74 295.15L520.44 298.92L522.49 302.43L524.88 305.65L527.58 308.54L530.59 311.1L533.86 313.3L537.39 315.12L541.14 316.55L545.08 317.59L549.19 318.21L553.43 318.42L557.77 318.21L562.17 317.59L566.61 316.56L571.05 315.13L575.46 313.31L579.8 311.12L584.04 308.56L588.14 305.67L592.09 302.45L595.83 298.94L599.36 295.17L602.64 291.16L605.64 286.94L608.35 282.54L610.73 278.01L612.79 273.36L614.49 268.64L615.82 263.89L616.79 259.14L617.37 254.42ZM598.78 254.97L598.65 257.9L598.29 260.88L597.68 263.88L596.84 266.88L595.76 269.86L594.47 272.8L592.96 275.66L591.25 278.43L589.36 281.1L587.29 283.63L585.06 286.01L582.69 288.23L580.21 290.26L577.61 292.09L574.94 293.7L572.2 295.09L569.42 296.23L566.61 297.14L563.81 297.79L561.03 298.18L558.29 298.31L555.61 298.18L553.02 297.78L550.53 297.13L548.16 296.23L545.94 295.08L543.87 293.69L541.97 292.08L540.27 290.25L538.76 288.22L537.46 286L536.39 283.62L535.54 281.08L534.94 278.42L534.57 275.64L534.45 272.78L534.57 269.84L534.94 266.87L535.54 263.87L536.39 260.86L537.46 257.89L538.76 254.95L540.27 252.09L541.97 249.31L543.87 246.65L545.94 244.12L548.16 241.73L550.53 239.52L553.02 237.49L555.61 235.66L558.29 234.05L561.03 232.66L563.81 231.51L566.61 230.61L569.42 229.96L572.2 229.57L574.94 229.44L577.61 229.57L580.21 229.97L582.69 230.62L585.06 231.52L587.29 232.67L589.36 234.06L591.25 235.67L592.96 237.5L594.47 239.53L595.76 241.75L596.84 244.13L597.68 246.67L598.29 249.33L598.65 252.11Z" fill="rgb(163 154 132)" stroke="#28241c" stroke-opacity=".35" stroke-width=".7" fill-rule="evenodd"/>
+          <path d="M506.86 288.47L508.92 291.98L522.49 302.43L520.44 298.92Z" fill="rgb(122 115 99)" stroke="rgb(122 115 99)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M578.51 200.74L574.57 199.71L588.14 210.16L592.09 211.19Z" fill="rgb(154 146 125)" stroke="rgb(154 146 125)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M505.16 284.69L506.86 288.47L520.44 298.92L518.74 295.15Z" fill="rgb(127 120 103)" stroke="rgb(127 120 103)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M574.57 199.71L570.46 199.08L584.04 209.54L588.14 210.16Z" fill="rgb(158 150 129)" stroke="rgb(158 150 129)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M503.83 280.68L505.16 284.69L518.74 295.15L517.4 291.13Z" fill="rgb(132 125 108)" stroke="rgb(132 125 108)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M570.46 199.08L566.23 198.88L579.8 209.33L584.04 209.54Z" fill="rgb(162 154 132)" stroke="rgb(162 154 132)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.87 276.46L503.83 280.68L517.4 291.13L516.44 286.91Z" fill="rgb(137 130 112)" stroke="rgb(137 130 112)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M566.23 198.88L561.89 199.08L575.46 209.54L579.8 209.33Z" fill="rgb(166 157 135)" stroke="rgb(166 157 135)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.29 272.06L502.87 276.46L516.44 286.91L515.86 282.52Z" fill="rgb(142 135 116)" stroke="rgb(142 135 116)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M561.89 199.08L557.48 199.7L571.05 210.16L575.46 209.54Z" fill="rgb(169 160 138)" stroke="rgb(169 160 138)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.09 267.52L502.29 272.06L515.86 282.52L515.66 277.98Z" fill="rgb(147 139 120)" stroke="rgb(147 139 120)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M557.48 199.7L553.04 200.73L566.61 211.19L571.05 210.16Z" fill="rgb(172 163 140)" stroke="rgb(172 163 140)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.29 262.88L502.09 267.52L515.66 277.98L515.86 273.33Z" fill="rgb(152 144 124)" stroke="rgb(152 144 124)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M553.04 200.73L548.6 202.16L562.17 212.62L566.61 211.19Z" fill="rgb(174 165 142)" stroke="rgb(174 165 142)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M502.87 258.16L502.29 262.88L515.86 273.33L516.44 268.61Z" fill="rgb(156 148 127)" stroke="rgb(156 148 127)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M548.6 202.16L544.19 203.98L557.77 214.44L562.17 212.62Z" fill="rgb(177 167 144)" stroke="rgb(177 167 144)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M503.83 253.4L502.87 258.16L516.44 268.61L517.4 263.86Z" fill="rgb(160 152 130)" stroke="rgb(160 152 130)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M544.19 203.98L539.85 206.18L553.43 216.63L557.77 214.44Z" fill="rgb(178 169 145)" stroke="rgb(178 169 145)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M505.16 248.65L503.83 253.4L517.4 263.86L518.74 259.11Z" fill="rgb(164 155 134)" stroke="rgb(164 155 134)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M539.85 206.18L535.61 208.73L549.19 219.19L553.43 216.63Z" fill="rgb(179 170 146)" stroke="rgb(179 170 146)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M506.86 243.93L505.16 248.65L518.74 259.11L520.44 254.39Z" fill="rgb(167 159 136)" stroke="rgb(167 159 136)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M535.61 208.73L531.51 211.63L545.08 222.08L549.19 219.19Z" fill="rgb(180 171 147)" stroke="rgb(180 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M508.92 239.29L506.86 243.93L520.44 254.39L522.49 249.74Z" fill="rgb(171 162 139)" stroke="rgb(171 162 139)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M531.51 211.63L527.57 214.84L541.14 225.3L545.08 222.08Z" fill="rgb(181 171 147)" stroke="rgb(181 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M511.31 234.75L508.92 239.29L522.49 249.74L524.88 245.21Z" fill="rgb(173 164 141)" stroke="rgb(173 164 141)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M527.57 214.84L523.82 218.35L537.39 228.8L541.14 225.3Z" fill="rgb(181 171 147)" stroke="rgb(181 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M514.01 230.35L511.31 234.75L524.88 245.21L527.58 240.81Z" fill="rgb(176 167 143)" stroke="rgb(176 167 143)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M523.82 218.35L520.29 222.12L533.86 232.58L537.39 228.8Z" fill="rgb(180 171 147)" stroke="rgb(180 171 147)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M517.01 226.13L514.01 230.35L527.58 240.81L530.59 236.59Z" fill="rgb(177 168 145)" stroke="rgb(177 168 145)" stroke-width=".6" fill-rule="evenodd"/>
+          <path d="M520.29 222.12L517.01 226.13L530.59 236.59L533.86 232.58Z" fill="rgb(179 170 146)" stroke="rgb(179 170 146)" stroke-width=".6" fill-rule="evenodd"/>
+        </g>
+      </svg>
+      <!-- house-structure-svg:end -->
+    </figure>
+    <div class="structure-inspector">
+      <div class="structure-parts" role="group" aria-label="펼쳐 볼 글자 선택">
+        <button class="structure-part" type="button" data-structure-part="giyeok" aria-pressed="false"><span>ㄱ</span><small>기둥과 처마</small></button>
+        <button class="structure-part" type="button" data-structure-part="mieum" aria-pressed="false"><span>ㅁ</span><small>입구</small></button>
+        <button class="structure-part" type="button" data-structure-part="siot" aria-pressed="false"><span>ㅅ</span><small>지붕</small></button>
+        <button class="structure-part" type="button" data-structure-part="ieung" aria-pressed="false"><span>ㅇ</span><small>창</small></button>
+      </div>
+      <div class="structure-readout" role="status" aria-atomic="true">
+        <h3 id="structure-part-title">한글 건축관</h3>
+        <p id="structure-part-description">석재의 꺾인 선과 참나무의 네 획이 한 채의 집을 이룹니다.</p>
+      </div>
+      <button class="structure-reset" id="structure-reset" type="button" aria-disabled="true">전체 모형 보기</button>
+    </div>
+  </div>
+</dialog>
 <dialog class="workshop-dialog" id="workshop-dialog" aria-labelledby="workshop-title">
-<div class="workshop-heading"><div><h2 id="workshop-title">한글로 집 짓기</h2><p>ㅁ은 입구, ㅅ은 지붕, ㅇ은 창이 됩니다.</p></div><button class="dialog-close" id="workshop-close" type="button" aria-label="작업실 닫고 전시로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-<p id="workshop-hint">조각을 끌어 윤곽에 맞춰보세요. 글자를 선택한 뒤 ‘맞춰 놓기’를 눌러도 됩니다.</p>
-<div class="workshop-board"><canvas id="workshop-canvas" tabindex="0" aria-label="중력과 충돌이 적용되는 한글 조립 작업대" aria-describedby="workshop-hint workshop-status"></canvas><p id="workshop-loading" role="status">글자 조각을 준비하고 있습니다.</p></div>
-<p class="workshop-status" id="workshop-status" role="status" aria-live="polite">세 조각으로 집을 완성해보세요.</p>
-<div class="workshop-tools"><div class="piece-buttons" role="group" aria-label="조립할 글자 선택"><button type="button" data-piece="0" aria-pressed="true">ㅁ 입구</button><button type="button" data-piece="1" aria-pressed="false">ㅅ 지붕</button><button type="button" data-piece="2" aria-pressed="false">ㅇ 창</button></div><button class="place-button" id="place-piece" type="button" disabled>맞춰 놓기</button></div>
-<div class="workshop-options"><label><input type="checkbox" id="gravity-toggle" checked> 중력 켜기</label><button type="button" id="reset-workshop">다시 짓기</button><button type="button" id="retry-workshop" hidden>작업실 다시 열기</button></div>
-<p class="workshop-note">가벼운 나무, 단단한 돌, 묵직한 황동. 충돌과 탄성은 가상 물성입니다. 키보드는 1·2·3으로 선택, Enter로 배치합니다.</p></dialog>
-<noscript><style>.load-status{display:none}</style><p class="no-script-note">현재 글로 읽는 전시입니다. JavaScript를 켜면 3D 관람과 한글 작업실을 이용할 수 있습니다.</p></noscript>
+  <header class="workshop-heading">
+    <h2 id="workshop-title">한글로 집 짓기</h2>
+    <button class="dialog-close" id="workshop-close" type="button" aria-label="작업실 닫고 전시로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  </header>
+  <p id="workshop-loading" role="status">글자 조각을 준비하고 있습니다.</p>
+  <button class="workshop-secondary" type="button" id="retry-workshop" hidden>작업실 다시 열기</button>
+  <div class="workshop-layout" id="workshop-layout" hidden>
+    <section id="workshop-assembly" aria-label="한글 조립 작업대">
+      <ol class="workshop-steps" aria-label="조립 순서">
+        <li data-workshop-step><span>ㅁ</span> 입구 <small></small></li>
+        <li data-workshop-step><span>ㅅ</span> 지붕 <small></small></li>
+        <li data-workshop-step><span>ㅇ</span> 창 <small></small></li>
+      </ol>
+      <div class="workshop-board">
+        <div class="workshop-board-labels" aria-hidden="true"><span>놓을 자리</span><span id="workshop-tray-label">이번 조각</span></div>
+        <canvas id="workshop-canvas" role="img" tabindex="0" aria-label="조립 작업대의 조각과 배치 윤곽" aria-describedby="workshop-hint" aria-keyshortcuts="Enter Space"></canvas>
+        <span class="workshop-grip" id="workshop-grip" aria-hidden="true"></span>
+      </div>
+      <p id="workshop-hint">윤곽에 끌어 놓거나 버튼을 누르세요.</p>
+      <p class="workshop-status" id="workshop-status" role="status" aria-atomic="true"></p>
+      <div class="workshop-placement">
+        <button class="place-button" id="place-piece" type="button">입구 놓기</button>
+        <button id="workshop-drop" type="button">중력으로 놓아 보기</button>
+      </div>
+    </section>
+    <section id="workshop-completion" class="workshop-completion" hidden>
+      <h3 id="workshop-complete-title" tabindex="-1">한 채의 집이 완성됐어요.</h3>
+      <p>ㅁ으로 들어가 ㅅ 아래 머물고, ㅇ 너머로 풍경을 봅니다.</p>
+    </section>
+    <figure id="workshop-exhibit" class="workshop-exhibit" data-part="mieum">
+      <div id="workshop-model"></div>
+      <figcaption>
+        <h3 id="workshop-exhibit-title"></h3>
+        <p id="workshop-exhibit-detail"></p>
+      </figcaption>
+    </figure>
+    <button class="place-button" id="return-to-exhibition" type="button" hidden>전시로 돌아가기</button>
+    <div class="workshop-options">
+      <label><input type="checkbox" id="gravity-toggle"> 중력 켜기</label>
+      <button class="workshop-secondary" type="button" id="undo-workshop" disabled>한 단계 되돌리기</button>
+      <button class="workshop-secondary" type="button" id="reset-workshop" disabled>다시 짓기</button>
+    </div>
+  </div>
+</dialog>
+<noscript><style>.load-status{display:none}</style><p class="no-script-note">현재 이미지와 글로 읽는 전시입니다. JavaScript를 켜면 관람 방식 선택과 한글 작업실을 이용할 수 있습니다.</p></noscript>
 <script type="module">
-const loadingMessages={scene:'한글 건축관을 세우는 중',materials:'석재, 나무와 금속의 질감을 준비하는 중',shader:'조명과 반사를 준비하는 중',warmup:'전시실의 빛과 그림자를 미리 준비하는 중',frame:'전시관의 첫 장면을 준비하는 중',ready:'관람 준비가 끝났습니다.'};
-const showLoadingStep=(value,phase)=>{document.getElementById('loading-progress').value=value;document.getElementById('loading-phase').textContent=loadingMessages[phase];};
-document.getElementById('experience').inert=true;
-import('./interface.js').then(async ({initInterface}) => {
- const ui=initInterface();
- try {const gallery=await import('./gallery.js');if(ui.wantsText())return;const controller=await gallery.initGallery({onProgress:showLoadingStep,shouldContinue:()=>!ui.wantsText()});if(!controller)return;if(!ui.wantsText()){document.documentElement.dataset.view='3d';window.scrollTo({top:0,left:0,behavior:'instant'});}ui.attach(controller);}
- catch(error){ui.fail(error);}
-}).catch(()=>{
+document.getElementById('experience').inert=document.documentElement.dataset.view==='loading';
+import('./viewing-mode.js').then(({startViewing})=>startViewing().ready).catch(()=>{
  document.documentElement.dataset.view='static';document.documentElement.dataset.state='error';
  document.getElementById('experience').inert=false;
  document.getElementById('load-status').textContent='3D 전시를 열지 못했습니다. 아래 전시 설명은 계속 읽을 수 있습니다.';
  document.getElementById('failure-actions').hidden=false;
  document.getElementById('retry-gallery').addEventListener('click',()=>location.reload(),{once:true});
 });
+if ('IntersectionObserver' in window && 'animate' in Element.prototype && 'matchMedia' in window) {
+ const entry = new IntersectionObserver(entries => {
+  if (!entries.some(item => item.isIntersecting)) return;
+  entry.disconnect();
+  import('./note-motion.js').then(({watchNoteMotion})=>watchNoteMotion()).catch(()=>{});
+ }, {rootMargin:'60% 0px'});
+ entry.observe(document.querySelector('.notes-transition'));
+}
 </script></body></html>
