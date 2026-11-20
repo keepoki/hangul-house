@@ -100,6 +100,20 @@ test('returning from the article reached by scrolling restores the gallery final
   assert.ok(calls.some(entry=>Array.isArray(entry)&&entry[0]==='seek'&&entry[1]===1));
   assert.equal(f.$('story-title').focused,true);
 });
+test('a note returns to its own room even when the visitor chose to read first',()=>{
+  const {f,ui,calls,controller}=boot(undefined,{readFirst:true});
+  const water=f.groups['[data-note-stop]'][1];
+  ui.attach(controller,{view:'images'});
+  assert.equal(f.document.documentElement.dataset.view,'static');
+  assert.equal(water.hidden,false);
+  f.fire(water,'click');
+  assert.equal(ui.wantsText(),false);
+  assert.equal(f.document.documentElement.dataset.view,'images');
+  assert.ok(calls.some(entry=>Array.isArray(entry)&&entry[0]==='seek'&&entry[1]===.26));
+  assert.equal(f.$('story-title').focused,true);
+  ui.fail(new Error('unavailable'));
+  assert.equal(water.hidden,true);
+});
 test('gallery copy retains a space where mobile hides the line break',()=>{
   for(const {title,body} of chapters){
     assert.doesNotMatch(title,/<br>\S/);

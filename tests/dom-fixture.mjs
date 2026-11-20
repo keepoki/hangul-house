@@ -12,6 +12,7 @@ export function fixture(){
   const elements=new Map();function $(id){if(!elements.has(id))elements.set(id,new Element(id));return elements.get(id);}
   const groups={
     '[data-stop]':Array.from({length:8},(_,i)=>{const e=$('stop-'+i);e.dataset.stop=String(i);return e;}),
+    '[data-note-stop]':Array.from({length:6},(_,i)=>{const note=$('note-stop-'+(i+1));note.dataset.noteStop=String(i+1);return note;}),
     '[data-goto]':[0,.13].map((p,i)=>{const e=$('goto-'+i);e.dataset.goto=String(p);return e;}),
     '[data-workshop-step]':Array.from({length:3},(_,i)=>{const step=$('workshop-step-'+i);step.querySelector=()=>$(step.id+'-status');return step;}),
     '[data-open-workshop]':[$('open-workshop'),$('mobile-workshop'),$('story-action'),$('text-workshop')],

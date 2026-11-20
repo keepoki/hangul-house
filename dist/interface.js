@@ -51,6 +51,7 @@ function wireStructureExplorer(document,{pause,resume}){
 export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()}={}){
   const $=id=>document.getElementById(id),root=document.documentElement,help=$('help-menu'),dialog=$('workshop-dialog');
   const modes=$('viewing-menu'),resumeButton=$('resume-gallery');
+  const noteStops=document.querySelectorAll('[data-note-stop]');
   let controller=null,textMode=root.dataset.readFirst==='true',savedProgress=null,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
   let visualView='3d';
   const isVisual=()=>root.dataset.view==='3d'||root.dataset.view==='images';
@@ -95,8 +96,7 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   document.querySelectorAll('[data-credits]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();showText('credits');}));
   document.querySelector('.skip').addEventListener('click',e=>{e.preventDefault();showText();});
   document.querySelector('.failure-actions a').addEventListener('click',e=>{e.preventDefault();showText();});
-  resumeButton.addEventListener('click',()=>{
-    const progress=savedProgress??(textMode?0:1);
+  function returnToGallery(progress){
     textMode=false;savedProgress=null;
     if(!controller){onRetry();return;}
     root.dataset.view=visualView;
@@ -104,7 +104,9 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
     controller.resume?.();
     controller.refresh();
     focusSection($('story-title'));
-  });
+  }
+  resumeButton.addEventListener('click',()=>returnToGallery(savedProgress??(textMode?0:1)));
+  noteStops.forEach(button=>button.addEventListener('click',()=>returnToGallery(navigationStops[Number(button.dataset.noteStop)])));
   function closeViewingMenu(){
     modes.open=false;
     modes.querySelector('summary')?.focus({preventScroll:true});
@@ -149,7 +151,7 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
     try{const files=[['Three.js','THREE-LICENSE.txt'],['Cannon-es','CANNON-LICENSE.txt'],['고운바탕','FONT-LICENSE.txt']];const texts=await Promise.all(files.map(async([name,file])=>{const response=await fetch('./assets/'+file);if(!response.ok)throw new Error();return name+'\n\n'+await response.text();}));const pre=document.createElement('pre');pre.textContent=texts.join('\n\n────────────────\n\n');$('license-notices').replaceChildren(pre);}catch{button.disabled=false;button.textContent='라이선스 다시 불러오기';}
   });
   const timeout=setTimeout(()=>{if(root.dataset.state==='loading'){$('load-status').textContent='3D 준비가 늦어지고 있습니다. 아래 설명부터 읽어보세요.';$('loading-phase').textContent='준비가 길어지고 있습니다. 글로 먼저 관람할 수 있습니다.';$('failure-actions').hidden=false;}},12000);
-  function fail(error){clearTimeout(timeout);controller=null;resumeButton.textContent='전시 관람으로 돌아가기';root.dataset.view='static';root.dataset.state='error';$('experience').inert=false;$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
+  function fail(error){clearTimeout(timeout);controller=null;noteStops.forEach(button=>button.hidden=true);resumeButton.textContent='전시 관람으로 돌아가기';root.dataset.view='static';root.dataset.state='error';$('experience').inert=false;$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
   return {wantsText:()=>textMode,fail,
     setViewingState({preference,active,status,notice=''}){document.querySelectorAll('[name="viewing-mode"]').forEach(input=>input.checked=input.value===preference);$('viewing-current').textContent=active==='3d'?'3D':'이미지';$('viewing-status').textContent=status;$('viewing-announcement').textContent=notice;},
     attach(value,{view='3d'}={}){
@@ -158,6 +160,7 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
       ['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);
       root.dataset.view=textMode?'static':view;
       resumeButton.hidden=false;
+      noteStops.forEach(button=>button.hidden=false);
       if(textMode||dialog.open||structure.open)controller.pause?.();
       controller.refresh();
     }
