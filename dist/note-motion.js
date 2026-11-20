@@ -1,85 +1,82 @@
-const noteEase = [0.22, 1, 0.36, 1];
-const detailScale = 'scale(1.16)';
+const traceWindows = {
+  roof: [0.08, 0.46],
+  frame: [0.19, 0.58],
+  eaves: [0.27, 0.67],
+  window: [0.38, 0.78],
+};
+const clampNoteProgress = value => Math.max(0, Math.min(1, value));
 
 export function watchNoteMotion() {
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const seen = new WeakSet();
+  const preference = matchMedia('(prefers-reduced-motion: no-preference) and (min-height: 480px)');
+  const root = document.documentElement;
+  const runway = document.querySelector('.notes-transition');
+  const eligible = () => preference.matches && ['3d', 'images'].includes(root.dataset.view);
   let motionModule;
   let disable;
 
-  async function applyPreference() {
-    if (reduced.matches) {
+  async function sync() {
+    if (!eligible()) {
       disable?.();
       disable = undefined;
       return;
     }
     const { animate } = await (motionModule ??= import('./assets/motion-mini.js'));
-    if (!reduced.matches && !disable) disable = animateNotes(animate, seen);
+    if (eligible() && !disable) disable = animateNotes(animate, runway);
   }
 
-  const update = () => { applyPreference().catch(() => {}); };
-  reduced.addEventListener('change', update);
+  const update = () => { sync().catch(() => {}); };
+  preference.addEventListener('change', update);
+  new MutationObserver(update).observe(root, { attributes: true, attributeFilter: ['data-view'] });
   update();
 }
 
-function animateNotes(animate, seen) {
-  const arrivals = new Map();
-  const entrance = new IntersectionObserver(entries => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      const plate = entry.target;
-      entrance.unobserve(plate);
-      seen.add(plate);
-      const animation = animate(plate, { clipPath: ['inset(0 0 12% 0)', 'inset(0)'], opacity: [0.76, 1] }, {
-        duration: 0.58, ease: noteEase,
-      });
-      arrivals.set(plate, animation);
-      animation.then(() => {
-        plate.style.removeProperty('clip-path');
-        plate.style.removeProperty('opacity');
-        arrivals.delete(plate);
-      });
+function animateNotes(animate, runway) {
+  const scene = runway.querySelector('.notes-scene');
+  const tracks = [];
+  function track(selector, keyframes, from, to) {
+    const elements = [...runway.querySelectorAll(selector)];
+    const motion = animate(elements, keyframes, { autoplay: false, duration: 1, ease: 'linear' });
+    tracks.push({ motion, from, to });
+  }
+
+  track('.notes-art', { transform: ['scale(1.13)', 'scale(1)'] }, 0, 0.85);
+  track('.notes-house', { opacity: [1, 0.07] }, 0.21, 0.81);
+  track('.notes-grid', { opacity: [0, 0.44] }, 0.29, 0.87);
+  for (const [part, [from, to]] of Object.entries(traceWindows)) {
+    const selector = '[data-trace="' + part + '"]';
+    track(selector, { strokeDashoffset: [1, 0] }, from, to);
+  }
+  track('.notes-labels', { opacity: [0, 1] }, 0.57, 0.87);
+
+  let frame = 0;
+  let previous = -1;
+  function draw() {
+    frame = 0;
+    const sceneHeight = scene.clientHeight;
+    const lead = sceneHeight * 0.36;
+    const hold = runway.clientHeight - sceneHeight;
+    const progress = clampNoteProgress((lead - runway.getBoundingClientRect().top) / (lead + hold));
+    if (progress === previous) return;
+    previous = progress;
+    for (const { motion, from, to } of tracks) {
+      motion.time = clampNoteProgress((progress - from) / (to - from)) * motion.duration;
     }
-  }, { threshold: 0.15 });
+  }
 
-  const cleanups = [...document.querySelectorAll('.text-room')].map(room => {
-    const plate = room.querySelector('.note-plate');
-    const photo = plate.querySelector('img');
-    const marker = plate.querySelector('.note-marker');
-    const detail = room.querySelector('.note-observation');
-    let zoom;
-    let accent;
-    if (detail.open) photo.style.transform = detailScale;
-    if (!detail.open && !seen.has(plate)) entrance.observe(plate);
+  function queueDraw() {
+    if (!frame) frame = requestAnimationFrame(draw);
+  }
 
-    function focusDetail() {
-      const previous = getComputedStyle(photo).transform;
-      zoom?.cancel();
-      accent?.cancel();
-      zoom = animate(photo, { transform: [previous, detail.open ? detailScale : 'none'] }, {
-        duration: detail.open ? 0.56 : 0.38, ease: noteEase,
-      });
-      if (detail.open) accent = animate(marker, { scale: [1.75, 1] }, { duration: 0.46, ease: noteEase });
-    }
-
-    detail.addEventListener('toggle', focusDetail);
-    return () => {
-      detail.removeEventListener('toggle', focusDetail);
-      zoom?.cancel();
-      accent?.cancel();
-      photo.style.removeProperty('transform');
-      marker.style.removeProperty('scale');
-    };
-  });
+  runway.dataset.notesMotion = '';
+  draw();
+  addEventListener('scroll', queueDraw, { passive: true });
+  addEventListener('resize', queueDraw);
 
   return () => {
-    entrance.disconnect();
-    for (const [plate, animation] of arrivals) {
-      animation.cancel();
-      plate.style.removeProperty('clip-path');
-      plate.style.removeProperty('opacity');
-    }
-    arrivals.clear();
-    cleanups.forEach(cleanup => cleanup());
+    cancelAnimationFrame(frame);
+    removeEventListener('scroll', queueDraw);
+    removeEventListener('resize', queueDraw);
+    tracks.forEach(({ motion }) => motion.cancel());
+    delete runway.dataset.notesMotion;
   };
 }

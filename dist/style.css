@@ -380,11 +380,58 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
 }
 
 
+.text-tour { max-width: none; padding: 0; }
+.text-tour-content { max-width: 1040px; margin-inline: auto; padding: 32px 24px 60px; }
+.text-tour-heading { margin-bottom: 24px; }
+.notes-transition { background: #141510; }
+.notes-scene {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  justify-items: center;
+  gap: clamp(18px, 3.2svh, 36px);
+  padding: clamp(28px, 5svh, 64px) clamp(16px, 5vw, 72px);
+}
+.notes-frame, .notes-intro { width: min(100%, 1120px); }
+.notes-frame {
+  position: relative;
+  aspect-ratio: 1480 / 830;
+  overflow: hidden;
+  background: #212016;
+  outline: 1px solid #c9aa6b55;
+  outline-offset: -1px;
+}
+.notes-art {
+  position: absolute;
+  /* Crop 220px left and 115px top from the registered 1920×1080 photograph and drawing. */
+  inset: -13.855% auto auto -14.865%;
+  width: 129.73%;
+  aspect-ratio: 16 / 9;
+}
+.notes-house, .notes-drawing { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.notes-drawing { color: #f2cf99; opacity: 0; }
+.notes-grid { color: #bfa780; opacity: 0; }
+.notes-labels { font: 46px var(--display); opacity: 0; }
+.notes-intro h2 { margin: 0; font-size: clamp(36px, 6.7vw, 78px); line-height: 1.22; }
+.notes-intro p { margin: 8px 0 0; }
+.notes-transition[data-notes-motion] { min-height: calc(100svh + clamp(350px, 67svh, 710px)); }
+[data-notes-motion] .notes-scene { position: sticky; top: 0; height: 100svh; }
+[data-notes-motion] .notes-frame, [data-notes-motion] .notes-intro { width: min(100%, 1120px, calc((100svh - 210px) * 1.78)); }
+[data-notes-motion] .notes-drawing { opacity: 1; }
+[data-notes-motion] [data-trace] { stroke-dasharray: 1; stroke-dashoffset: 1; }
+@media (min-width: 760px) {
+  .notes-intro { display: flex; align-items: baseline; justify-content: space-between; gap: 36px; }
+  .notes-intro p { max-width: 34ch; }
+}
+@media (max-width: 639px) {
+  .notes-labels { font-size: 64px; }
+}
+
 .text-room {
   display: grid;
   grid-template: "heading" auto "plate" auto "copy" auto / minmax(0, 1fr);
   gap: 16px;
-  padding-block: clamp(24px, 5vw, 54px);
+  padding: clamp(24px, 5vw, 54px) 0;
   border-top: 1px solid var(--soft-line);
   scroll-margin-top: 24px;
 }
@@ -393,10 +440,7 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
 .note-heading h3 { margin: 0; font: 400 clamp(25px, 3.6vw, 34px)/1.25 var(--display); }
 .note-heading .note-material { margin: 5px 0 0; font-size: 14px; }
 .note-plate {
-  --note-x: var(--point-x);
-  --note-y: var(--point-y);
   grid-area: plate;
-  position: relative;
   aspect-ratio: 16 / 9;
   align-self: start;
   margin: 0;
@@ -404,59 +448,9 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
   overflow: hidden;
 }
 .note-plate picture, .note-plate img { display: block; width: 100%; height: 100%; }
-.note-plate img { object-fit: cover; transform-origin: var(--note-x) var(--note-y); }
-.note-plate picture::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at var(--note-x) var(--note-y), transparent 36px, #11120f6b 180px);
-  opacity: 0;
-  pointer-events: none;
-}
-.note-marker {
-  position: absolute;
-  top: var(--note-y);
-  left: var(--note-x);
-  width: 20px;
-  height: 20px;
-  border: 4px solid var(--bg);
-  border-radius: 50%;
-  background: var(--focus);
-  box-shadow: 0 0 0 2px var(--focus), 0 0 0 8px #11120f70;
-  opacity: 0;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.text-room:has(.note-observation[open]) .note-marker,
-.text-room:has(.note-observation[open]) .note-plate picture::after { opacity: 1; }
+.note-plate img { object-fit: cover; }
 .note-copy { grid-area: copy; min-width: 0; }
-.note-copy > p { margin: 16px 0 4px; }
-.note-observation { border-block: 1px solid var(--soft-line); }
-.note-observation summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 44px;
-  cursor: pointer;
-  list-style: none;
-  color: var(--gold);
-  font-size: 15px;
-}
-.note-observation summary::-webkit-details-marker { display: none; }
-.note-observation summary::after {
-  content: "";
-  width: 8px;
-  height: 8px;
-  margin-right: 6px;
-  border: solid currentColor;
-  border-width: 0 1px 1px 0;
-  transform: rotate(45deg);
-}
-.note-observation[open] summary::after { transform: rotate(225deg); }
-.note-observation:not([open]) .note-full-view,
-.note-observation[open] summary span:first-child { display: none; }
-.note-observation p { margin: 0; padding: 3px 0 14px; color: var(--paper); font-size: 15px; }
+.note-copy > p { margin: 0 0 8px; }
 .note-revisit { min-height: 44px; padding: 6px 0; color: var(--gold); text-decoration: underline; text-underline-offset: 4px; font-size: 14px; }
 @media (min-width: 760px) {
   .text-room {
@@ -468,16 +462,8 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
   }
 }
 @media (max-width: 639px) and (orientation: portrait) {
-  .note-plate { aspect-ratio: 3 / 4; --note-x: var(--portrait-x); --note-y: var(--portrait-y); }
+  .note-plate { aspect-ratio: 3 / 4; }
 }
 @media (max-width: 360px) and (orientation: portrait) {
-  .note-plate {
-    aspect-ratio: 1;
-    /* Project the portrait annotation into the centered square crop. */
-    --note-y: calc(var(--portrait-y) * 1.333333 - 16.666667%);
-  }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .note-marker { transition: opacity .18s ease-out; }
-  .note-plate picture::after { transition: opacity .28s ease-out; }
+  .note-plate { aspect-ratio: 1; }
 }

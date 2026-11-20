@@ -23,3 +23,10 @@ test('all fonts, libraries, illustrations and licenses are self-hosted',async()=
   for(const file of ['THREE-LICENSE.txt','CANNON-LICENSE.txt','MOTION-LICENSE.txt'])assert.ok((await readFile(new URL('assets/'+file,base),'utf8')).includes('Permission is hereby granted'));
   assert.ok((await readFile(new URL('assets/FONT-LICENSE.txt',base),'utf8')).includes('SIL OPEN FONT LICENSE'));
 });
+test('the notes lead with the finished house and six continuously readable room descriptions',()=>{
+  const notes=html.slice(html.indexOf('id="text-tour"'),html.indexOf('id="credits"'));
+  assert.match(notes, /class="notes-transition"[\s\S]*assets\/gallery\/finale\.jpg[\s\S]*id="text-tour-title"/);
+  assert.equal([...notes.matchAll(/class="text-room"/g)].length,6);
+  assert.equal([...notes.matchAll(/data-note-stop="[1-6]"/g)].length,6);
+  assert.doesNotMatch(notes,/<details|사진 속 .*살펴보기/);
+});

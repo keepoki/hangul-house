@@ -118,24 +118,51 @@ document.addEventListener('click',event=>{
 <div class="scroll-track" id="journey" aria-hidden="true"></div>
 </div>
 <section class="text-tour" id="text-tour" aria-labelledby="text-tour-title">
-<div class="text-tour-heading"><h2 id="text-tour-title">전시 노트</h2><p>한글의 획과 여백은 어떻게 건축이 되었을까요? 돌의 방에서 고요의 방까지, 여섯 공간에 담긴 이야기를 읽어보세요.</p><button class="structure-entry" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button><button type="button" class="resume-button" id="resume-gallery" hidden>전시 관람으로 돌아가기</button></div>
+<div class="notes-transition">
+  <div class="notes-scene">
+    <div class="notes-frame" aria-hidden="true">
+      <div class="notes-art">
+        <img class="notes-house" src="./assets/gallery/finale.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="">
+        <svg class="notes-drawing" viewBox="0 0 1920 1080" fill="none" focusable="false">
+          <defs><pattern id="notes-paper-grid" width="64" height="64" patternUnits="userSpaceOnUse"><path d="M0 64V0H64" stroke="currentColor" stroke-width="1"/></pattern></defs>
+          <g class="notes-grid">
+            <rect width="1920" height="1080" fill="url(#notes-paper-grid)"/>
+            <path d="M282 767H1638M305 798H1614M652 828H1318M997 143V862M311 439H1610" stroke="currentColor" stroke-width="2" stroke-dasharray="8 10"/>
+          </g>
+          <g class="notes-outlines" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+            <path data-trace="roof" pathLength="1" d="M709 422 997 225 1325 450 1282 492 997 301 710 493Z"/>
+            <path data-trace="frame" pathLength="1" d="M753 751V439H1211V751ZM806 731H1160V492H806Z"/>
+            <path data-trace="eaves" pathLength="1" d="M374 396H709V749H646V459H374Z"/>
+            <ellipse data-trace="window" pathLength="1" cx="1385" cy="600" rx="154" ry="149"/>
+            <ellipse data-trace="window" pathLength="1" cx="1389" cy="599" rx="92" ry="90"/>
+          </g>
+          <g class="notes-labels" fill="currentColor" text-anchor="middle">
+            <text x="515" y="367">ㄱ 처마</text><text x="997" y="194">ㅅ 지붕</text>
+            <text x="981" y="628">ㅁ 입구</text><text x="1389" y="618">ㅇ 창</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <header class="notes-intro">
+      <h2 id="text-tour-title">전시 노트</h2>
+      <p>ㄱ은 처마가 되고, ㅅ은 지붕이 됩니다. ㅁ의 안쪽은 입구로, ㅇ의 빈 곳은 창으로 이어집니다.</p>
+    </header>
+  </div>
+</div>
+<div class="text-tour-content">
+<div class="text-tour-heading"><button class="structure-entry" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button><button type="button" class="resume-button" id="resume-gallery" hidden>전시 관람으로 돌아가기</button></div>
 <section class="text-room" id="room-stone" aria-labelledby="note-stone-title">
   <header class="note-heading">
     <span class="text-glyph" aria-hidden="true">ㄱ</span>
     <div><h3 id="note-stone-title">돌의 방</h3><p class="note-material">석회암</p></div>
   </header>
-  <figure class="note-plate" style="--point-x:63%;--point-y:21%;--portrait-x:75%;--portrait-y:27%">
+  <figure class="note-plate">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/stone-mobile.jpg">
       <img src="./assets/gallery/stone.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="가로로 놓인 돌과 세로로 놓인 돌이 꺾여 만나는 ㄱ 조형물.">
     </picture>
-    <span class="note-marker" aria-hidden="true"></span>
   </figure>
   <div class="note-copy">
-    <details class="note-observation">
-      <summary><span>사진 속 ㄱ 살펴보기</span><span class="note-full-view">전체 장면 보기</span></summary>
-      <p>가로획과 세로획이 만나는 모서리를 보세요. 건축관에서는 이 꺾임이 처마와 기둥을 잇습니다.</p>
-    </details>
     <p>ㄱ의 가로선은 처마가 되고, 세로선은 그 아래의 공간을 받칩니다. 석회암의 무게와 선의 방향을 함께 감상합니다.</p>
     <button class="note-revisit" type="button" data-note-stop="1" aria-label="돌의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
@@ -145,18 +172,13 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅇ</span>
     <div><h3 id="note-water-title">물의 뜰</h3><p class="note-material">청동 · 수면</p></div>
   </header>
-  <figure class="note-plate" style="--point-x:51%;--point-y:36%;--portrait-x:51%;--portrait-y:35%">
+  <figure class="note-plate">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/water-mobile.jpg">
       <img src="./assets/gallery/water.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="물 위의 둥근 청동 ㅇ과 수면에 비친 원.">
     </picture>
-    <span class="note-marker" aria-hidden="true"></span>
   </figure>
   <div class="note-copy">
-    <details class="note-observation">
-      <summary><span>사진 속 ㅇ 살펴보기</span><span class="note-full-view">전체 장면 보기</span></summary>
-      <p>청동으로 둘러싸인 빈 원을 보세요. 건축관의 둥근 창도 이렇게 재료 안쪽을 비워 풍경을 담습니다.</p>
-    </details>
     <p>ㅇ의 가운데를 비우자 창이 생깁니다. 청동의 둥근 틈 너머로 물과 빛이 이어지고, 비워 둔 곳에 풍경이 담깁니다.</p>
     <button class="note-revisit" type="button" data-note-stop="2" aria-label="물의 뜰 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
@@ -166,18 +188,13 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅁ</span>
     <div><h3 id="note-wood-title">나무의 뜰</h3><p class="note-material">참나무</p></div>
   </header>
-  <figure class="note-plate" style="--point-x:50%;--point-y:69%;--portrait-x:50%;--portrait-y:65%">
+  <figure class="note-plate">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/wood-mobile.jpg">
       <img src="./assets/gallery/wood.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="가운데가 열려 있어 뒤의 나무 살이 보이는 참나무 ㅁ.">
     </picture>
-    <span class="note-marker" aria-hidden="true"></span>
   </figure>
   <div class="note-copy">
-    <details class="note-observation">
-      <summary><span>사진 속 ㅁ 살펴보기</span><span class="note-full-view">전체 장면 보기</span></summary>
-      <p>네모난 틀의 아래쪽, 밝게 빛나는 모서리를 보세요. 그 위의 빈 사각형이 건축관에선 드나드는 입구가 됩니다.</p>
-    </details>
     <p>ㅁ의 네 방향이 하나의 방을 만듭니다. 가운데를 열면 누구나 드나드는 입구가 됩니다. 닫힌 글자가 열린 공간으로 바뀝니다.</p>
     <button class="note-revisit" type="button" data-note-stop="3" aria-label="나무의 뜰 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
@@ -187,19 +204,14 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅎ</span>
     <div><h3 id="note-light-title">빛의 방</h3><p class="note-material">황동</p></div>
   </header>
-  <figure class="note-plate" style="--point-x:50%;--point-y:34%;--portrait-x:49%;--portrait-y:38%">
+  <figure class="note-plate">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/light-mobile.jpg">
       <img src="./assets/gallery/light.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="두 가로획과 고리가 떨어져 있는 황동 ㅎ. 뒤로 세로 조명이 보인다.">
     </picture>
-    <span class="note-marker" aria-hidden="true"></span>
   </figure>
   <div class="note-copy">
-    <details class="note-observation">
-      <summary><span>사진 속 ㅎ 살펴보기</span><span class="note-full-view">전체 장면 보기</span></summary>
-      <p>가로획과 고리 사이를 보세요. 조각 사이로 드러나는 세로 조명과, 금속 곡면에 닿는 빛의 모양이 다릅니다.</p>
-    </details>
-    <p>ㅎ의 짧은 선과 둥근 형태를 나누어 봅니다. 황동의 표면과 틈마다 다른 방향의 빛이 닿습니다.</p>
+    <p>ㅎ의 가로획과 고리 사이로 세로 조명이 드러납니다. 틈을 통과하는 빛은 황동의 둥근 표면에서 다른 방향으로 흩어집니다.</p>
     <button class="note-revisit" type="button" data-note-stop="4" aria-label="빛의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
 </section>
@@ -208,18 +220,13 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅏ</span>
     <div><h3 id="note-garden-title">초록의 정원</h3><p class="note-material">녹청 · 식재</p></div>
   </header>
-  <figure class="note-plate" style="--point-x:48%;--point-y:48%;--portrait-x:46%;--portrait-y:49%">
+  <figure class="note-plate">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/garden-mobile.jpg">
       <img src="./assets/gallery/garden.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="나무 사이에서 오른쪽으로 짧은 획이 뻗은 초록색 ㅏ.">
     </picture>
-    <span class="note-marker" aria-hidden="true"></span>
   </figure>
   <div class="note-copy">
-    <details class="note-observation">
-      <summary><span>사진 속 ㅏ 살펴보기</span><span class="note-full-view">전체 장면 보기</span></summary>
-      <p>짧은 획이 오른쪽으로 갈라지는 지점입니다. 시선을 그 방향으로 따라가면 글자 너머로 정원이 열립니다.</p>
-    </details>
     <p>ㅏ의 곧은 선은 기둥이 되고, 옆으로 뻗은 선은 정원으로 향하는 길이 됩니다. 식물의 유연한 선과 금속의 곧은 선을 비교해보세요.</p>
     <button class="note-revisit" type="button" data-note-stop="5" aria-label="초록의 정원 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
@@ -229,24 +236,21 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅅ</span>
     <div><h3 id="note-quiet-title">고요의 방</h3><p class="note-material">아이보리 도자기</p></div>
   </header>
-  <figure class="note-plate" style="--point-x:49%;--point-y:22%;--portrait-x:48%;--portrait-y:28%">
+  <figure class="note-plate">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/quiet-mobile.jpg">
       <img src="./assets/gallery/quiet.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="두 획이 꼭대기에서 만나는 ㅅ 조형물과 그 뒤의 한글 건축관.">
     </picture>
-    <span class="note-marker" aria-hidden="true"></span>
   </figure>
   <div class="note-copy">
-    <details class="note-observation">
-      <summary><span>사진 속 ㅅ 살펴보기</span><span class="note-full-view">전체 장면 보기</span></summary>
-      <p>두 획이 만나는 꼭대기에서 시선을 아래로 내려보세요. 조형물 아래 빈 삼각형과 뒤편 건축관의 지붕을 비교할 수 있습니다.</p>
-    </details>
     <p>서로 기대는 ㅅ의 두 선. 기울어진 획 아래에 사람이 머물 자리가 생깁니다. 지붕과 글자가 공유하는 형태를 발견해보세요.</p>
     <button class="note-revisit" type="button" data-note-stop="6" aria-label="고요의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
 </section>
 <section class="text-finale"><h2>이제, 당신의 집.</h2><p>입구가 된 ㅁ, 지붕이 된 ㅅ, 창이 된 ㅇ. 세 조각을 직접 옮겨 집 한 채를 지어보세요.</p><button class="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button></section>
-<footer class="credits" id="credits"><h2>제작 정보</h2><p>한글의 형태를 건축과 풍경으로 확장하는 창작 디지털 전시입니다. 건축물·조형물·텍스처는 코드로 구성했으며, 물리 체험의 무게와 탄성은 전시를 위한 가상 값입니다.</p><p>3D 렌더링: Three.js · MIT License<br>물리 시뮬레이션: Cannon-es · MIT License<br>전시 노트 애니메이션: Motion Mini · MIT License<br>제목 서체: 고운바탕 · SIL Open Font License</p><details><summary>외부 코드와 서체의 라이선스 고지</summary><div id="license-notices"><p>라이선스 원문은 배포 파일에 함께 포함되어 있습니다.</p><button type="button" id="load-licenses">라이선스 원문 펼치기</button></div></details><p class="credits-note">소리 없이도 온전히 감상할 수 있습니다. 모든 관람과 체험은 이 페이지 안에서 이어집니다.</p></footer></section>
+<footer class="credits" id="credits"><h2>제작 정보</h2><p>한글의 형태를 건축과 풍경으로 확장하는 창작 디지털 전시입니다. 건축물·조형물·텍스처는 코드로 구성했으며, 물리 체험의 무게와 탄성은 전시를 위한 가상 값입니다.</p><p>3D 렌더링: Three.js · MIT License<br>물리 시뮬레이션: Cannon-es · MIT License<br>전시 노트 애니메이션: Motion Mini · MIT License<br>제목 서체: 고운바탕 · SIL Open Font License</p><details><summary>외부 코드와 서체의 라이선스 고지</summary><div id="license-notices"><p>라이선스 원문은 배포 파일에 함께 포함되어 있습니다.</p><button type="button" id="load-licenses">라이선스 원문 펼치기</button></div></details><p class="credits-note">소리 없이도 온전히 감상할 수 있습니다. 모든 관람과 체험은 이 페이지 안에서 이어집니다.</p></footer>
+</div>
+</section>
 <dialog class="structure-dialog" id="structure-dialog" aria-labelledby="structure-title" aria-describedby="structure-instruction">
   <header class="structure-header">
     <div>
@@ -619,7 +623,7 @@ if ('IntersectionObserver' in window && 'animate' in Element.prototype && 'match
   if (!entries.some(item => item.isIntersecting)) return;
   entry.disconnect();
   import('./note-motion.js').then(({watchNoteMotion})=>watchNoteMotion()).catch(()=>{});
- }, {rootMargin:'280px 0px'});
- document.querySelectorAll('.note-plate').forEach(plate=>entry.observe(plate));
+ }, {rootMargin:'60% 0px'});
+ entry.observe(document.querySelector('.notes-transition'));
 }
 </script></body></html>
