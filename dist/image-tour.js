@@ -20,7 +20,8 @@ export function createImageTour({document=globalThis.document,window=globalThis.
   const trackHeight=()=>Math.max(1,(root.scrollHeight||window.innerHeight)-window.innerHeight);
   function imageLoaded(){if(active){$('image-status').textContent='';$('retry-image').hidden=true;}}
   img.addEventListener('load',imageLoaded);
-  img.addEventListener('error',()=>{if(active){$('image-status').textContent='이미지를 불러오지 못했습니다. 다시 불러오거나 전시 설명을 읽어보세요.';$('retry-image').hidden=false;}});
+  function imageFailed(){if(active){$('image-status').textContent='이미지를 불러오지 못했습니다. 다시 불러오거나 전시 설명을 읽어보세요.';$('retry-image').hidden=false;}}
+  img.addEventListener('error',imageFailed);
   $('retry-image').addEventListener('click',()=>{const url=new URL(img.src,document.baseURI);url.searchParams.set('retry',Date.now());source.srcset='';img.src=url.href;$('retry-image').hidden=true;});
   function paint(){
     if(!active)return;
@@ -29,6 +30,7 @@ export function createImageTour({document=globalThis.document,window=globalThis.
     $('image-status').textContent='전시 이미지를 불러오는 중입니다.';$('retry-image').hidden=true;
     source.srcset=`./assets/gallery/${file}-mobile.jpg`;img.src=`./assets/gallery/${file}.jpg`;img.alt=stillDescriptions[index];
     if(img.complete&&img.naturalWidth)imageLoaded();
+    else if(img.complete&&img.currentSrc)imageFailed();
     $('story-title').innerHTML=data.title;$('story-body').innerHTML=data.body;$('room-context').textContent=data.context;$('story-note').textContent=data.note;
     $('work-glyph').textContent=data.glyph;$('work-name').textContent=data.name;$('work-material').textContent=data.material;
     $('experience').classList.toggle('is-detail',index>0&&index<7);$('story-action').hidden=index!==7;
@@ -40,6 +42,7 @@ export function createImageTour({document=globalThis.document,window=globalThis.
   function seek(value){progress=clamp(value,0,1);chapter=-1;window.scrollTo({top:progress*trackHeight(),behavior:'instant'});paint();$('tour-progress').textContent=Math.round(progress*100)+'%';}
   window.addEventListener('scroll',update,{passive:true});window.addEventListener('resize',()=>{if(active)seek(progress);},{passive:true});
   return {
+    prepare:()=>img.decode(),
     getProgress:()=>progress,seek,
     goTo(value){setZoom(1);seek(value);},setZoom,changeZoom(delta){setZoom(zoom+delta);},
     toggleLighting(){bright=!bright;img.style.filter=bright?'brightness(1.18)':'';$('light-toggle').setAttribute('aria-pressed',String(bright));},

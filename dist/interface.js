@@ -23,7 +23,7 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   document.querySelectorAll('[data-credits]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();showText('credits');}));
   document.querySelector('.skip').addEventListener('click',e=>{e.preventDefault();showText();});
   document.querySelector('.failure-actions a').addEventListener('click',e=>{e.preventDefault();showText();});
-  $('resume-gallery').addEventListener('click',()=>{if(!controller){onRetry();return;}textMode=false;root.dataset.view=visualView;scrollTo({top:savedScroll,behavior:'instant'});controller.resume?.();controller.refresh();});
+  $('resume-gallery').addEventListener('click',()=>{textMode=false;if(!controller){onRetry();return;}root.dataset.view=visualView;scrollTo({top:savedScroll,behavior:'instant'});controller.resume?.();controller.refresh();});
   document.querySelectorAll('[name="viewing-mode"]').forEach(input=>input.addEventListener('change',()=>{if(!input.checked)return;textMode=false;$('viewing-menu').open=false;onModeChange(input.value);}));
   document.querySelectorAll('[data-viewing-choice]').forEach(button=>button.addEventListener('click',()=>{textMode=false;onModeChange(button.dataset.viewingChoice);}));
   $('zoom-in').addEventListener('click',()=>controller?.changeZoom(.15));
@@ -62,7 +62,6 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   });
   const timeout=setTimeout(()=>{if(root.dataset.state==='loading'){$('load-status').textContent='3D 준비가 늦어지고 있습니다. 아래 설명부터 읽어보세요.';$('loading-phase').textContent='준비가 길어지고 있습니다. 글로 먼저 관람할 수 있습니다.';$('failure-actions').hidden=false;}},12000);
   function fail(error){clearTimeout(timeout);controller=null;root.dataset.view='static';root.dataset.state='error';$('experience').inert=false;$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
-  addEventListener('museum:failure',e=>fail(e.detail));
   return {wantsText:()=>textMode,fail,
     setViewingState({preference,active,status,notice=''}){document.querySelectorAll('[name="viewing-mode"]').forEach(input=>input.checked=input.value===preference);$('viewing-current').textContent=active==='3d'?'3D':'이미지';$('viewing-status').textContent=status;$('viewing-announcement').textContent=notice;},
     attach(value,{view='3d'}={}){clearTimeout(timeout);controller=value;visualView=view;root.dataset.state='ready';$('experience').inert=false;$('failure-actions').hidden=true;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=false);if(textMode)root.dataset.view='static';else root.dataset.view=view;if(textMode||dialog.open)controller.pause?.();controller.refresh();}

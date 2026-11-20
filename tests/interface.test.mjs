@@ -54,14 +54,14 @@ test('an unavailable viewing module retains the readable exhibition and a retry 
   assert.equal(f.document.documentElement.dataset.view,'static');assert.equal(f.$('failure-actions').hidden,false);
   assert.ok(html.includes('data-view="static"'));assert.equal([...html.matchAll(/class="text-room"/g)].length,6);
 });
-test('fresh reload disables scroll restoration and immediately exposes image viewing',async()=>{
+test('fresh reload disables scroll restoration and shows the arrival screen',async()=>{
   const html=await readFile(new URL('../dist/index.html',import.meta.url),'utf8'),f=fixture();
   const head=html.match(/<script>([\s\S]*?)<\/script>/)[1],calls=[],history={scrollRestoration:'auto',state:null,replaceState(...args){calls.push(args);}};
   new Function('history','location','performance','document',head)(history,{hash:'#room-water',pathname:'/',search:''},{getEntriesByType:()=>[{type:'reload'}]},f.document);
-  assert.equal(history.scrollRestoration,'manual');assert.deepEqual(calls,[[null,'','/']]);assert.equal(f.document.documentElement.dataset.view,'images');
+  assert.equal(history.scrollRestoration,'manual');assert.deepEqual(calls,[[null,'','/']]);assert.equal(f.document.documentElement.dataset.view,'loading');
   let code=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].trim();
   let started=false;
   code=code.replace("import('./viewing-mode.js')",'return Promise.resolve({startViewing})');
-  await new Function('document','startViewing',code)(f.document,()=>{started=true;});
-  assert.equal(started,true);assert.equal(f.document.documentElement.dataset.state,'ready');
+  await new Function('document','startViewing',code)(f.document,()=>{started=true;return {ready:Promise.resolve()};});
+  assert.equal(started,true);assert.equal(f.document.documentElement.dataset.state,'loading');
 });
