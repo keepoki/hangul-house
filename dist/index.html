@@ -33,6 +33,7 @@ document.documentElement.dataset.view='loading';
 <div class="experience" id="experience">
 <header class="header">
 <a class="brand" href="#home" aria-label="글자의 집 처음으로"><span class="brand-mark" aria-hidden="true">ㅎ</span><span>글자의 집<small>A House of Hangul</small></span></a>
+<div class="header-actions">
 <nav class="header-nav" aria-label="주 메뉴">
 <button class="desktop-link" type="button" data-goto="0">공간 보기</button>
 <button class="desktop-link" type="button" data-goto="0.13">작품 보기</button>
@@ -53,6 +54,7 @@ document.documentElement.dataset.view='loading';
 <button class="workshop-link" type="button" data-open-workshop hidden>직접 짓기</button>
 </nav>
 <button class="light-toggle" id="light-toggle" type="button" aria-pressed="false" aria-label="조명을 더 밝게" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><span>조명</span></button>
+</div>
 </header>
 <div class="scene-wrap">
 <img class="scene-poster" id="scene-poster" src="./assets/house-plan.svg" alt="ㄱ 기둥과 처마, ㅅ 지붕, ㅁ 입구, ㅇ 창으로 구성한 한글 집의 정면도." width="800" height="500">
@@ -68,10 +70,12 @@ document.documentElement.dataset.view='loading';
 </div></div>
 <div class="vignette" aria-hidden="true"></div>
 <main class="story" aria-live="polite" aria-atomic="true">
+<div class="story-copy" tabindex="0">
 <h1 id="story-title">한글의 선으로<br>공간을 짓다.</h1>
 <p class="story-body" id="story-body">ㄱ은 기둥과 처마로, ㅅ은 지붕으로.<br>익숙한 글자가 건축이 되는 전시입니다.</p>
 <p class="room-context" id="room-context">한글 건축관</p>
 <p class="story-note" id="story-note">아래로 스크롤해 여섯 공간을 만나보세요.</p>
+</div>
 <button class="structure-entry" id="structure-action" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button>
 <button class="story-action" id="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button>
 <div class="failure-actions" id="failure-actions" hidden><button type="button" id="retry-gallery">3D 다시 열기</button><a href="#text-tour">전시 설명 읽기</a></div>
