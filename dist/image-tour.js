@@ -44,11 +44,11 @@ export function createImageTour({document=globalThis.document,window=globalThis.
     else if(img.complete&&img.currentSrc)imageFailed();
     $('story-title').innerHTML=data.title;$('story-body').innerHTML=data.body;$('room-context').textContent=data.context;$('story-note').textContent=data.note;
     $('work-glyph').textContent=data.glyph;$('work-name').textContent=data.name;$('work-material').textContent=data.material;
-    $('experience').classList.toggle('is-detail',index>0&&index<7);$('story-action').hidden=index!==7;
+    $('experience').classList.toggle('is-detail',index>0&&index<7);
     $('story-read').hidden=index!==7;
     $('structure-action').hidden=index!==0;
     $('story-start').hidden=index!==0;
-    $('view-label').textContent=data.context;$('scroll-label').textContent=index===7?'스크롤해 전시 글 읽기':index===0?'아래로 스크롤해 관람':'다음 공간으로';
+    $('view-label').textContent=data.context;$('scroll-label').textContent=index===7?'아래로 스크롤해 전시 노트 읽기':index===0?'아래로 스크롤해 관람':'다음 공간으로';
     updateTourNavigation(document,index);
   }
   function update(){if(!active||root.dataset.view!=='images')return;progress=clamp(window.scrollY/trackHeight(),0,1);$('tour-progress').textContent=Math.round(progress*100)+'%';paint();}

@@ -8,10 +8,9 @@ function boot(options,{readFirst=false}={}){
   const f=fixture(),calls=[];
   f.$('viewing-menu').querySelector=()=>f.$('viewing-menu-summary');
   if(readFirst)f.document.documentElement.dataset.readFirst='true';
-  const workshop={open(){calls.push('workshop-open');},pause(){calls.push('workshop-pause');}};
-  const source=original.replace(/^export\s+/gm,'').replace("import('./workshop.js')",'Promise.resolve({createWorkshop:()=>fakeWorkshop})');
-  const init=new Function('document','addEventListener','requestAnimationFrame','scrollY','scrollTo','location','setTimeout','clearTimeout','fakeWorkshop','console','options',source+'\nreturn initInterface(options);');
-  const ui=init(f.document,f.window.addEventListener.bind(f.window),fn=>{fn();return 1;},350,f.scrollTo,f.location,f.time,f.clear,workshop,{warn(){}},options);
+  const source=original.replace(/^export\s+/gm,'');
+  const init=new Function('document','addEventListener','requestAnimationFrame','scrollY','scrollTo','location','setTimeout','clearTimeout','console','options',source+'\nreturn initInterface(options);');
+  const ui=init(f.document,f.window.addEventListener.bind(f.window),fn=>{fn();return 1;},350,f.scrollTo,f.location,f.time,f.clear,{warn(){}},options);
   const controller={getProgress:()=>.26,seek:(p,options)=>calls.push(['seek',p,options]),goTo:p=>calls.push(['go',p]),refresh:()=>calls.push('refresh'),pause:()=>calls.push('gallery-pause'),resume:()=>calls.push('gallery-resume'),changeZoom:p=>calls.push(['zoom',p]),setZoom:p=>calls.push(['setZoom',p]),toggleLighting:()=>calls.push('light'),next:()=>calls.push('next')};
   return{f,ui,calls,controller};
 }
@@ -119,14 +118,6 @@ test('gallery copy retains a space where mobile hides the line break',()=>{
     assert.doesNotMatch(title,/<br>\S/);
     assert.doesNotMatch(body,/<br>\S/);
   }
-});
-test('the workshop opens within the page and restores focus and scrolling when closed',async()=>{
-  const {f,calls,ui,controller}=boot();ui.attach(controller);f.document.body.style.overflow='auto';const opener=f.$('open-workshop');
-  f.fire(opener,'click');await Promise.resolve();await Promise.resolve();
-  assert.equal(f.$('workshop-dialog').open,true);assert.equal(f.document.body.style.overflow,'hidden');assert.ok(calls.includes('workshop-open'));
-  assert.ok(calls.includes('gallery-pause'));
-  f.fire(f.$('workshop-close'),'click');assert.equal(f.$('workshop-dialog').open,false);assert.equal(f.document.body.style.overflow,'auto');assert.equal(opener.focused,true);assert.ok(calls.includes('workshop-pause'));
-  assert.ok(calls.includes('gallery-resume'));
 });
 test('an unavailable viewing module retains the readable exhibition and a retry action',async()=>{
   const html=await readFile(new URL('../dist/index.html',import.meta.url),'utf8'),f=fixture();

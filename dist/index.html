@@ -25,7 +25,7 @@ document.addEventListener('click',event=>{
 });
 </script>
 <meta name="theme-color" content="#11120f">
-<meta name="description" content="한글의 선이 기둥과 지붕이 되는 디지털 전시. 여섯 공간을 둘러보고, 중력과 충돌이 있는 한글 작업실에서 나만의 집을 지어보세요.">
+<meta name="description" content="한글의 선이 기둥과 지붕이 되는 디지털 전시. 여섯 공간을 지나 완성된 집을 만나고, 글자가 건축이 되는 과정을 전시 노트에서 읽어보세요.">
 <title>글자의 집 — 한글의 선으로 공간을 짓다</title>
 <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./style.css">
@@ -63,11 +63,10 @@ document.addEventListener('click',event=>{
 <h2>천천히, 가까이.</h2>
 <p>스크롤하면 전시 구역 사이를 이동하고, 각 글자의 눈높이까지 다가갑니다. 위로 스크롤하면 되짚어 볼 수 있어요.</p>
 <p>아래 글자를 누르거나 작품을 클릭하면 바로 가까이 볼 수 있습니다. 확대는 +·− 버튼, 키보드는 +·−·0을 사용하세요.</p>
-<p>‘직접 짓기’에서는 조각을 윤곽에 끌어 놓거나 ‘입구 놓기’, ‘지붕 놓기’, ‘창 놓기’ 버튼을 누르세요. ‘중력으로 놓아 보기’에서는 조각이 받침에 닿는 모습을 볼 수 있습니다.</p>
+<p>마지막 ‘완성’에서 집의 정면을 감상하고, 아래로 더 스크롤해 전시 노트를 읽을 수 있습니다.</p>
 <button class="text-link" type="button" data-show-text>전시를 글로 읽기</button>
 <a class="text-link" href="#credits" data-credits>제작 정보와 라이선스</a>
 </div></details>
-<button class="workshop-link" type="button" data-open-workshop hidden>직접 짓기</button>
 </nav>
 <button class="light-toggle" id="light-toggle" type="button" aria-pressed="false" aria-label="조명을 더 밝게" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><span>조명</span></button>
 </div>
@@ -95,8 +94,7 @@ document.addEventListener('click',event=>{
 <div class="story-actions">
 <button class="story-action" id="story-start" type="button" hidden>첫 글자 만나기</button>
 <button class="structure-entry" id="structure-action" type="button" data-open-structure aria-haspopup="dialog" aria-controls="structure-dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5"/></svg>구조 펼쳐 보기</button>
-<button class="story-action" id="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button>
-<button class="structure-entry" id="story-read" type="button" data-show-text hidden>전시 글 이어 읽기</button>
+<button class="structure-entry" id="story-read" type="button" data-show-text hidden>전시 노트 읽기</button>
 </div>
 <div class="failure-actions" id="failure-actions" hidden><button type="button" id="retry-gallery">3D 다시 열기</button><a href="#text-tour">전시 설명 읽기</a></div>
 </main>
@@ -111,9 +109,8 @@ document.addEventListener('click',event=>{
 <button type="button" data-stop="4" aria-label="빛의 방, 히읗">ㅎ</button>
 <button type="button" data-stop="5" aria-label="초록의 정원, 아">ㅏ</button>
 <button type="button" data-stop="6" aria-label="고요의 방, 시옷">ㅅ</button>
-<button type="button" data-stop="7" aria-label="관람 마무리와 한글 작업실">짓기</button>
+<button type="button" data-stop="7" aria-label="완성, 한글 건축관 정면">완성</button>
 </nav><div class="journey-status"><span id="view-label">한글 건축관</span><output id="tour-progress" aria-live="off" aria-label="관람 진행률">0%</output></div>
-<button class="mobile-workshop-link" id="mobile-workshop" type="button" data-open-workshop aria-haspopup="dialog" aria-controls="workshop-dialog" hidden>직접 짓기</button>
 </footer></div>
 <div class="scroll-track" id="journey" aria-hidden="true"></div>
 </div>
@@ -278,8 +275,7 @@ document.addEventListener('click',event=>{
     <button class="note-revisit" type="button" data-note-stop="6" aria-label="고요의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
 </section>
-<section class="text-finale"><h2>이제, 당신의 집.</h2><p>입구가 된 ㅁ, 지붕이 된 ㅅ, 창이 된 ㅇ. 세 조각을 직접 옮겨 집 한 채를 지어보세요.</p><button class="story-action" type="button" data-open-workshop hidden>나의 한글 집 짓기</button></section>
-<footer class="credits" id="credits"><h2>제작 정보</h2><p>한글의 형태를 건축과 풍경으로 확장하는 창작 디지털 전시입니다. 건축물·조형물·텍스처는 코드로 구성했으며, 물리 체험의 무게와 탄성은 전시를 위한 가상 값입니다.</p><p>3D 렌더링: Three.js · MIT License<br>물리 시뮬레이션: Cannon-es · MIT License<br>전시 노트 애니메이션: Motion Mini · MIT License<br>제목 서체: 고운바탕 · SIL Open Font License</p><details><summary>외부 코드와 서체의 라이선스 고지</summary><div id="license-notices"><p>라이선스 원문은 배포 파일에 함께 포함되어 있습니다.</p><button type="button" id="load-licenses">라이선스 원문 펼치기</button></div></details><p class="credits-note">소리 없이도 온전히 감상할 수 있습니다. 모든 관람과 체험은 이 페이지 안에서 이어집니다.</p></footer>
+<footer class="credits" id="credits"><h2>제작 정보</h2><p>한글의 형태를 건축과 풍경으로 확장하는 창작 디지털 전시입니다. 건축물·조형물·텍스처는 코드로 구성했습니다.</p><p>3D 렌더링: Three.js · MIT License<br>전시 노트 애니메이션: Motion Mini · MIT License<br>제목 서체: 고운바탕 · SIL Open Font License</p><details><summary>외부 코드와 서체의 라이선스 고지</summary><div id="license-notices"><p>라이선스 원문은 배포 파일에 함께 포함되어 있습니다.</p><button type="button" id="load-licenses">라이선스 원문 펼치기</button></div></details><p class="credits-note">소리 없이도 온전히 감상할 수 있습니다. 모든 관람은 이 페이지 안에서 이어집니다.</p></footer>
 </div>
 </section>
 <dialog class="structure-dialog" id="structure-dialog" aria-labelledby="structure-title" aria-describedby="structure-instruction">
@@ -594,52 +590,7 @@ document.addEventListener('click',event=>{
     </div>
   </div>
 </dialog>
-<dialog class="workshop-dialog" id="workshop-dialog" aria-labelledby="workshop-title">
-  <header class="workshop-heading">
-    <h2 id="workshop-title">한글로 집 짓기</h2>
-    <button class="dialog-close" id="workshop-close" type="button" aria-label="작업실 닫고 전시로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-  </header>
-  <p id="workshop-loading" role="status">글자 조각을 준비하고 있습니다.</p>
-  <button class="workshop-secondary" type="button" id="retry-workshop" hidden>작업실 다시 열기</button>
-  <div class="workshop-layout" id="workshop-layout" hidden>
-    <section id="workshop-assembly" aria-label="한글 조립 작업대">
-      <ol class="workshop-steps" aria-label="조립 순서">
-        <li data-workshop-step><span>ㅁ</span> 입구 <small></small></li>
-        <li data-workshop-step><span>ㅅ</span> 지붕 <small></small></li>
-        <li data-workshop-step><span>ㅇ</span> 창 <small></small></li>
-      </ol>
-      <div class="workshop-board">
-        <div class="workshop-board-labels" aria-hidden="true"><span>놓을 자리</span><span id="workshop-tray-label">이번 조각</span></div>
-        <canvas id="workshop-canvas" role="img" tabindex="0" aria-label="조립 작업대의 조각과 배치 윤곽" aria-describedby="workshop-hint" aria-keyshortcuts="Enter Space"></canvas>
-        <span class="workshop-grip" id="workshop-grip" aria-hidden="true"></span>
-      </div>
-      <p id="workshop-hint">윤곽에 끌어 놓거나 버튼을 누르세요.</p>
-      <p class="workshop-status" id="workshop-status" role="status" aria-atomic="true"></p>
-      <div class="workshop-placement">
-        <button class="place-button" id="place-piece" type="button">입구 놓기</button>
-        <button id="workshop-drop" type="button">중력으로 놓아 보기</button>
-      </div>
-    </section>
-    <section id="workshop-completion" class="workshop-completion" hidden>
-      <h3 id="workshop-complete-title" tabindex="-1">한 채의 집이 완성됐어요.</h3>
-      <p>ㅁ으로 들어가 ㅅ 아래 머물고, ㅇ 너머로 풍경을 봅니다.</p>
-    </section>
-    <figure id="workshop-exhibit" class="workshop-exhibit" data-part="mieum">
-      <div id="workshop-model"></div>
-      <figcaption>
-        <h3 id="workshop-exhibit-title"></h3>
-        <p id="workshop-exhibit-detail"></p>
-      </figcaption>
-    </figure>
-    <button class="place-button" id="return-to-exhibition" type="button" hidden>전시로 돌아가기</button>
-    <div class="workshop-options">
-      <label><input type="checkbox" id="gravity-toggle"> 중력 켜기</label>
-      <button class="workshop-secondary" type="button" id="undo-workshop" disabled>한 단계 되돌리기</button>
-      <button class="workshop-secondary" type="button" id="reset-workshop" disabled>다시 짓기</button>
-    </div>
-  </div>
-</dialog>
-<noscript><style>.load-status{display:none}</style><p class="no-script-note">현재 이미지와 글로 읽는 전시입니다. JavaScript를 켜면 관람 방식 선택과 한글 작업실을 이용할 수 있습니다.</p></noscript>
+<noscript><style>.load-status{display:none}</style><p class="no-script-note">현재 이미지와 글로 읽는 전시입니다. JavaScript를 켜면 관람 방식을 선택할 수 있습니다.</p></noscript>
 <script type="module">
 document.getElementById('experience').inert=document.documentElement.dataset.view==='loading';
 import('./viewing-mode.js').then(({startViewing})=>startViewing().ready).catch(()=>{

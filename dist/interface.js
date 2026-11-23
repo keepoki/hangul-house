@@ -49,10 +49,10 @@ function wireStructureExplorer(document,{pause,resume}){
 }
 
 export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()}={}){
-  const $=id=>document.getElementById(id),root=document.documentElement,help=$('help-menu'),dialog=$('workshop-dialog');
+  const $=id=>document.getElementById(id),root=document.documentElement,help=$('help-menu');
   const modes=$('viewing-menu'),resumeButton=$('resume-gallery');
   const noteStops=document.querySelectorAll('[data-note-stop]');
-  let controller=null,textMode=root.dataset.readFirst==='true',savedProgress=null,workshop=null,workshopPromise=null,opener=null,previousOverflow='';
+  let controller=null,textMode=root.dataset.readFirst==='true',savedProgress=null;
   let visualView='3d';
   const isVisual=()=>root.dataset.view==='3d'||root.dataset.view==='images';
   const structure=wireStructureExplorer(document,{
@@ -124,31 +124,13 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
   $('retry-gallery').addEventListener('click',()=>onRetry());
   addEventListener('keydown',e=>{
     if(e.key==='Escape'){help.open=false;if(modes.open)closeViewingMenu();}
-    if(!controller||!isVisual()||dialog.open||structure.open||e.ctrlKey||e.metaKey||e.altKey||e.target?.isContentEditable||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName))return;
+    if(!controller||!isVisual()||structure.open||e.ctrlKey||e.metaKey||e.altKey||e.target?.isContentEditable||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName))return;
     if(['+','=','-','0'].includes(e.key)){e.preventDefault();if(e.key==='0')controller.setZoom(1);else controller.changeZoom(e.key==='-'?-.15:.15);}
   });
   document.addEventListener('click',e=>{if(help.open&&!help.contains(e.target))help.open=false;if(modes.open&&!modes.contains(e.target))modes.open=false;});
-  async function openWorkshop(source){
-    opener=source;help.open=false;if(!dialog.open){previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';dialog.showModal();controller?.pause?.();}
-    $('retry-workshop').hidden=true;
-    if(workshop){workshop.open();return;}
-    $('workshop-loading').hidden=false;$('workshop-loading').textContent='글자 조각을 준비하고 있습니다.';
-    try{
-      workshopPromise??=import('./workshop.js');
-      const module=await workshopPromise;
-      if(!workshop)workshop=module.createWorkshop();
-      if(dialog.open)workshop.open();
-    }catch(error){workshopPromise=null;$('workshop-loading').textContent='작업실을 불러오지 못했습니다. 다시 열기를 눌러주세요.';$('retry-workshop').hidden=false;$('workshop-status').textContent='전시 관람은 계속 이용할 수 있습니다.';console.warn('Workshop unavailable',error);}
-  }
-  document.querySelectorAll('[data-open-workshop]').forEach(b=>{b.hidden=false;b.addEventListener('click',()=>openWorkshop(b));});
-  $('story-action').hidden=true;
-  $('retry-workshop').addEventListener('click',()=>openWorkshop(opener));
-  $('workshop-close').addEventListener('click',()=>dialog.close());
-  dialog.addEventListener('close',()=>{workshop?.pause();document.body.style.overflow=previousOverflow;if(isVisual())controller?.resume?.();opener?.focus({preventScroll:true});});
-  dialog.addEventListener('click',e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});
   $('load-licenses').addEventListener('click',async e=>{
     const button=e.currentTarget;button.disabled=true;button.textContent='라이선스를 불러오는 중';
-    try{const files=[['Three.js','THREE-LICENSE.txt'],['Cannon-es','CANNON-LICENSE.txt'],['Motion Mini','MOTION-LICENSE.txt'],['고운바탕','FONT-LICENSE.txt']];const texts=await Promise.all(files.map(async([name,file])=>{const response=await fetch('./assets/'+file);if(!response.ok)throw new Error();return name+'\n\n'+await response.text();}));const pre=document.createElement('pre');pre.textContent=texts.join('\n\n────────────────\n\n');$('license-notices').replaceChildren(pre);}catch{button.disabled=false;button.textContent='라이선스 다시 불러오기';}
+    try{const files=[['Three.js','THREE-LICENSE.txt'],['Motion Mini','MOTION-LICENSE.txt'],['고운바탕','FONT-LICENSE.txt']];const texts=await Promise.all(files.map(async([name,file])=>{const response=await fetch('./assets/'+file);if(!response.ok)throw new Error();return name+'\n\n'+await response.text();}));const pre=document.createElement('pre');pre.textContent=texts.join('\n\n────────────────\n\n');$('license-notices').replaceChildren(pre);}catch{button.disabled=false;button.textContent='라이선스 다시 불러오기';}
   });
   const timeout=setTimeout(()=>{if(root.dataset.state==='loading'){$('load-status').textContent='3D 준비가 늦어지고 있습니다. 아래 설명부터 읽어보세요.';$('loading-phase').textContent='준비가 길어지고 있습니다. 글로 먼저 관람할 수 있습니다.';$('failure-actions').hidden=false;}},12000);
   function fail(error){clearTimeout(timeout);controller=null;noteStops.forEach(button=>button.hidden=true);resumeButton.textContent='전시 관람으로 돌아가기';root.dataset.view='static';root.dataset.state='error';$('experience').inert=false;$('load-status').textContent='3D 전시를 열지 못했습니다. 아래 설명은 계속 읽을 수 있습니다.';$('failure-actions').hidden=false;['zoom-in','zoom-out','zoom-reset','light-toggle'].forEach(id=>$(id).disabled=true);console.warn('3D gallery unavailable',error);}
@@ -161,7 +143,7 @@ export function initInterface({onModeChange=()=>{},onRetry=()=>location.reload()
       root.dataset.view=textMode?'static':view;
       resumeButton.hidden=false;
       noteStops.forEach(button=>button.hidden=false);
-      if(textMode||dialog.open||structure.open)controller.pause?.();
+      if(textMode||structure.open)controller.pause?.();
       controller.refresh();
     }
   };

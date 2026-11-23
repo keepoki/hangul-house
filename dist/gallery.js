@@ -72,7 +72,7 @@ function updateChapter({chapter:index,story}){
   if(index!==chapter){
     chapter=index;
     updateTourNavigation(document,index);
-    $('scroll-label').textContent=index===7?'스크롤해 전시 글 읽기':index===0?'아래로 스크롤해 관람':'다음 공간으로';
+    $('scroll-label').textContent=index===7?'아래로 스크롤해 전시 노트 읽기':index===0?'아래로 스크롤해 관람':'다음 공간으로';
   }
   if(story===shownStory)return;
   shownStory=story;
@@ -84,7 +84,6 @@ function updateChapter({chapter:index,story}){
   $('work-glyph').textContent=data.glyph;
   $('work-name').textContent=data.name;
   $('work-material').textContent=data.material;
-  $('story-action').hidden=story!==7;
   $('story-read').hidden=story!==7;
   $('structure-action').hidden=story!==0;
   $('story-start').hidden=story!==0;
@@ -163,7 +162,7 @@ function setup(onProgress) {
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   stage.appendChild(renderer.domElement);
   renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();failRendering(new Error('WebGL context lost'));});
-  renderer.domElement.addEventListener('webglcontextrestored',()=>{ /* Recovery is user-initiated, preserving workshop state. */ });
+  renderer.domElement.addEventListener('webglcontextrestored',()=>{ /* Recovery is user-initiated. */ });
   house=new THREE.Group();scene.add(house);
   scene.fog.density=.009;
   // Generate the premium texture maps off the main thread, while the loader is still active.
