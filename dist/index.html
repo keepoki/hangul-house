@@ -156,11 +156,21 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㄱ</span>
     <div><h3 id="note-stone-title">돌의 방</h3><p class="note-material">석회암</p></div>
   </header>
-  <figure class="note-plate">
+  <figure class="note-plate" data-note-scene="stone">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/stone-mobile.jpg">
       <img src="./assets/gallery/stone.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="가로로 놓인 돌과 세로로 놓인 돌이 꺾여 만나는 ㄱ 조형물.">
     </picture>
+    <div class="note-motion-art" aria-hidden="true">
+      <div class="note-art-image" data-src="./assets/gallery/stone.jpg"></div>
+      <div class="note-stone-shade"></div>
+      <div class="note-art-image note-stone-post" data-src="./assets/gallery/stone.jpg"></div>
+      <div class="note-art-image note-stone-eave" data-src="./assets/gallery/stone.jpg"></div>
+      <svg class="note-stone-joint" viewBox="0 0 1000 1000" preserveAspectRatio="none" fill="none" focusable="false">
+        <path d="M369 255H610V788" stroke-dasharray="8 6" opacity=".57" vector-effect="non-scaling-stroke"/>
+        <path d="M604 254h48m-25-28v58" vector-effect="non-scaling-stroke"/>
+      </svg>
+    </div>
   </figure>
   <div class="note-copy">
     <p>ㄱ의 가로선은 처마가 되고, 세로선은 그 아래의 공간을 받칩니다. 석회암의 무게와 선의 방향을 함께 감상합니다.</p>
@@ -172,11 +182,15 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅇ</span>
     <div><h3 id="note-water-title">물의 뜰</h3><p class="note-material">청동 · 수면</p></div>
   </header>
-  <figure class="note-plate">
+  <figure class="note-plate" data-note-scene="water">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/water-mobile.jpg">
       <img src="./assets/gallery/water.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="물 위의 둥근 청동 ㅇ과 수면에 비친 원.">
     </picture>
+    <div class="note-motion-art" aria-hidden="true">
+      <div class="note-art-image" data-src="./assets/gallery/water.jpg"></div>
+      <div class="note-round-view"><div class="note-art-image" data-src="./assets/note-scenes/water-window.jpg"></div></div>
+    </div>
   </figure>
   <div class="note-copy">
     <p>ㅇ의 가운데를 비우자 창이 생깁니다. 청동의 둥근 틈 너머로 물과 빛이 이어지고, 비워 둔 곳에 풍경이 담깁니다.</p>
@@ -188,11 +202,15 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅁ</span>
     <div><h3 id="note-wood-title">나무의 뜰</h3><p class="note-material">참나무</p></div>
   </header>
-  <figure class="note-plate">
+  <figure class="note-plate" data-note-scene="wood">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/wood-mobile.jpg">
       <img src="./assets/gallery/wood.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="가운데가 열려 있어 뒤의 나무 살이 보이는 참나무 ㅁ.">
     </picture>
+    <div class="note-motion-art" aria-hidden="true">
+      <div class="note-art-image" data-src="./assets/gallery/wood.jpg"></div>
+      <div class="note-wood-portal"><div class="note-art-image" data-src="./assets/note-scenes/entry.jpg"></div></div>
+    </div>
   </figure>
   <div class="note-copy">
     <p>ㅁ의 네 방향이 하나의 방을 만듭니다. 가운데를 열면 누구나 드나드는 입구가 됩니다. 닫힌 글자가 열린 공간으로 바뀝니다.</p>
@@ -204,14 +222,19 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅎ</span>
     <div><h3 id="note-light-title">빛의 방</h3><p class="note-material">황동</p></div>
   </header>
-  <figure class="note-plate">
+  <figure class="note-plate" data-note-scene="light">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/light-mobile.jpg">
       <img src="./assets/gallery/light.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="두 가로획과 고리가 떨어져 있는 황동 ㅎ. 뒤로 세로 조명이 보인다.">
     </picture>
+    <div class="note-motion-art" aria-hidden="true">
+      <div class="note-art-image" data-src="./assets/note-scenes/light-silhouette.jpg"></div>
+      <div class="note-art-image note-light-gap" data-src="./assets/note-scenes/light-gap.jpg"></div>
+      <div class="note-art-image note-light-brass" data-src="./assets/note-scenes/light-brass.jpg"></div>
+    </div>
   </figure>
   <div class="note-copy">
-    <p>ㅎ의 가로획과 고리 사이로 세로 조명이 드러납니다. 틈을 통과하는 빛은 황동의 둥근 표면에서 다른 방향으로 흩어집니다.</p>
+    <p>빛이 두 가로획과 고리 사이를 지납니다. 조명이 옆으로 옮겨가면 황동 조형물 옆 벽에 커다란 ㅎ이 그림자로 나타납니다.</p>
     <button class="note-revisit" type="button" data-note-stop="4" aria-label="빛의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
 </section>
@@ -220,14 +243,18 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅏ</span>
     <div><h3 id="note-garden-title">초록의 정원</h3><p class="note-material">녹청 · 식재</p></div>
   </header>
-  <figure class="note-plate">
+  <figure class="note-plate" data-note-scene="garden">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/garden-mobile.jpg">
       <img src="./assets/gallery/garden.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="나무 사이에서 오른쪽으로 짧은 획이 뻗은 초록색 ㅏ.">
     </picture>
+    <div class="note-motion-art" aria-hidden="true">
+      <div class="note-art-image" data-src="./assets/note-scenes/garden-start.webp"></div>
+      <div class="note-stroke-sprite" data-note-sprite="./assets/note-scenes/garden-frames.webp" hidden></div>
+    </div>
   </figure>
   <div class="note-copy">
-    <p>ㅏ의 곧은 선은 기둥이 되고, 옆으로 뻗은 선은 정원으로 향하는 길이 됩니다. 식물의 유연한 선과 금속의 곧은 선을 비교해보세요.</p>
+    <p>밑점을 고정한 채 기둥을 돌리면 ㅓ의 짧은 획이 옆면에서 가려집니다. 반 바퀴를 돌고 나면 같은 획이 오른쪽으로 뻗어 ㅏ가 됩니다.</p>
     <button class="note-revisit" type="button" data-note-stop="5" aria-label="초록의 정원 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
 </section>
@@ -236,14 +263,18 @@ document.addEventListener('click',event=>{
     <span class="text-glyph" aria-hidden="true">ㅅ</span>
     <div><h3 id="note-quiet-title">고요의 방</h3><p class="note-material">아이보리 도자기</p></div>
   </header>
-  <figure class="note-plate">
+  <figure class="note-plate" data-note-scene="quiet">
     <picture>
       <source media="(max-width: 639px) and (orientation: portrait)" srcset="./assets/gallery/quiet-mobile.jpg">
       <img src="./assets/gallery/quiet.jpg" width="1920" height="1080" loading="lazy" decoding="async" alt="두 획이 꼭대기에서 만나는 ㅅ 조형물과 그 뒤의 한글 건축관.">
     </picture>
+    <div class="note-motion-art" aria-hidden="true">
+      <div class="note-art-image" data-src="./assets/note-scenes/quiet-start.webp"></div>
+      <div class="note-stroke-sprite" data-note-sprite="./assets/note-scenes/quiet-frames.webp" hidden></div>
+    </div>
   </figure>
   <div class="note-copy">
-    <p>서로 기대는 ㅅ의 두 선. 기울어진 획 아래에 사람이 머물 자리가 생깁니다. 지붕과 글자가 공유하는 형태를 발견해보세요.</p>
+    <p>떨어져 선 두 도자기 획이 각각의 밑점을 축으로 기울어 꼭대기에서 만납니다. 두 획 아래의 빈 삼각형이 집 지붕 아래에 머물 공간이 됩니다.</p>
     <button class="note-revisit" type="button" data-note-stop="6" aria-label="고요의 방 전시에서 다시 보기" hidden>전시에서 다시 보기</button>
   </div>
 </section>
@@ -624,6 +655,6 @@ if ('IntersectionObserver' in window && 'animate' in Element.prototype && 'match
   entry.disconnect();
   import('./note-motion.js').then(({watchNoteMotion})=>watchNoteMotion()).catch(()=>{});
  }, {rootMargin:'60% 0px'});
- entry.observe(document.querySelector('.notes-transition'));
+ document.querySelectorAll('.notes-transition, [data-note-scene]').forEach(plate=>entry.observe(plate));
 }
 </script></body></html>

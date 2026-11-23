@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { Script } from 'node:vm';
 import { galleryStills } from './dist/image-tour.js';
 const base=new URL('./dist/',import.meta.url);
-const files=['index.html','style.css','assets/three.module.js','assets/cannon-es.js','assets/motion-mini.js','exhibition-layout.js','hangul-building.js','exhibition-content.js','camera-tour.js','surface-textures.js','environment.js','scene-quality.js','adaptive-quality.js','image-tour.js','viewing-mode.js','workshop-physics.js','workshop.js','interface.js','gallery.js','note-motion.js'];
+const files=['index.html','style.css','assets/three.module.js','assets/cannon-es.js','assets/motion-mini.js','exhibition-layout.js','hangul-building.js','exhibition-content.js','camera-tour.js','surface-textures.js','environment.js','scene-quality.js','adaptive-quality.js','image-tour.js','viewing-mode.js','workshop-physics.js','workshop.js','interface.js','gallery.js','note-scenes.js','note-motion.js'];
 const data=Object.fromEntries(await Promise.all(files.map(async name=>[name,await readFile(new URL(name,base),'utf8')])));
 function vendor(name,text){
  const found=text.match(/export\s*\{([^}]+)\}\s*;?\s*$/);
@@ -15,7 +15,7 @@ const licenses={};
 for(const file of ['THREE-LICENSE.txt','CANNON-LICENSE.txt','MOTION-LICENSE.txt','FONT-LICENSE.txt'])licenses[file]=await readFile(new URL('assets/'+file,base),'utf8');
 const imageData={};
 for(const name of new Set(galleryStills))for(const suffix of ['','-mobile']){const file=name+suffix;imageData[file]='data:image/jpeg;base64,'+(await readFile(new URL('assets/gallery/'+file+'.jpg',base))).toString('base64');}
-const app=['exhibition-layout.js','hangul-building.js','exhibition-content.js','camera-tour.js','surface-textures.js','environment.js','scene-quality.js','adaptive-quality.js'].map(file=>inline(data[file])).join('\n')+'\nconst stops=tourStops;\n'+['workshop-physics.js','workshop.js','interface.js','gallery.js','image-tour.js','viewing-mode.js','note-motion.js'].map(file=>inline(data[file])).join('\n');
+const app=['exhibition-layout.js','hangul-building.js','exhibition-content.js','camera-tour.js','surface-textures.js','environment.js','scene-quality.js','adaptive-quality.js'].map(file=>inline(data[file])).join('\n')+'\nconst stops=tourStops;\n'+['workshop-physics.js','workshop.js','interface.js','gallery.js','image-tour.js','viewing-mode.js','note-scenes.js','note-motion.js'].map(file=>inline(data[file])).join('\n');
 const body=app.replace("import('./workshop.js')","Promise.resolve({createWorkshop})").replace("import('./gallery.js')","Promise.resolve({initGallery})").replace("import('./assets/motion-mini.js')","loadInlineMotion()").replace("fetch('./assets/'+file)","Promise.resolve({ok:true,text:async()=>inlineLicenses[file]})").replace('`./assets/gallery/${file}-mobile.jpg`',"inlineGalleryImages[file+'-mobile']").replace('`./assets/gallery/${file}.jpg`','inlineGalleryImages[file]');
 let html=data['index.html'],css=data['style.css'];
 const original=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
@@ -29,5 +29,11 @@ const poster='data:image/svg+xml;base64,'+(await readFile(new URL('assets/house-
 css=css.replace('./assets/gowun-batang.ttf',font);
 html=html.replace(/<link rel="icon"[^>]+>/,'').replace(/<link rel="modulepreload"[^>]+>\s*/g,'').replace(/<link rel="stylesheet"[^>]+>/,()=>'<style>'+css+'</style>').replace('./assets/gowun-batang.ttf',font).replace('./assets/house-plan.svg',poster).replace(/<script type="module">[\s\S]*?<\/script>/,()=>'<script>'+script+'</script>');
 html=html.replace(/\.\/assets\/gallery\/([a-z-]+)\.jpg/g,(_,name)=>imageData[name]);
+const noteImagePaths=new Set(html.match(/\.\/assets\/note-scenes\/[a-z-]+\.(?:jpg|webp)/g));
+for(const file of noteImagePaths){
+ const type=file.endsWith('.webp')?'webp':'jpeg';
+ const image='data:image/'+type+';base64,'+(await readFile(new URL(file,base))).toString('base64');
+ html=html.replaceAll(file,image);
+}
 await writeFile(new URL('./hangul-house.html',import.meta.url),html);
 console.log('Created self-contained exhibition, physics workshop and license notices');

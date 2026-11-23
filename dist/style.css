@@ -441,6 +441,7 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
 .note-heading .note-material { margin: 5px 0 0; font-size: 14px; }
 .note-plate {
   grid-area: plate;
+  position: relative;
   aspect-ratio: 16 / 9;
   align-self: start;
   margin: 0;
@@ -449,6 +450,83 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
 }
 .note-plate picture, .note-plate img { display: block; width: 100%; height: 100%; }
 .note-plate img { object-fit: cover; }
+.note-motion-art { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .note-plate[data-note-ready] > picture { opacity: 0; }
+  .note-plate[data-note-ready] .note-motion-art {
+    position: absolute;
+    display: block;
+    top: 50%;
+    left: 50%;
+    width: var(--note-art-width, 100%);
+    aspect-ratio: 16 / 9;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+}
+.note-motion-art :is(.note-art-image, .note-stone-shade, .note-stone-joint, .note-round-view) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.note-art-image { background-size: 100% 100%; background-position: center; background-repeat: no-repeat; }
+.note-stone-shade {
+  background: radial-gradient(ellipse 64% 86% at 55% 76%, #494435, #27271e 57%, #181913);
+  clip-path: inset(0 0 19%);
+  opacity: calc(1 - var(--joined));
+}
+.note-stone-post {
+  clip-path: polygon(61.5% 21%, 64.3% 17.2%, 66.3% 18%, 67.5% 23%, 67.9% 75%, 66% 80.7%, 63.6% 81.2%, 60.5% 78%, 60% 69%, 60.4% 31%);
+  transform: translate(calc((1 - var(--post)) * 6%), calc((1 - var(--post)) * 5%));
+}
+.note-stone-eave {
+  clip-path: polygon(36.2% 18.3%, 37.4% 13.7%, 40% 11.4%, 59.5% 11.4%, 62.1% 13.4%, 64.4% 17.2%, 63.7% 20.4%, 60.8% 24.1%, 40% 24.4%, 37.7% 22.6%);
+  transform: translate(calc((var(--eave) - 1) * 7%), calc((var(--eave) - 1) * 7%));
+}
+.note-stone-joint { stroke: #ffdb9d; stroke-width: 2px; stroke-linecap: round; opacity: var(--joint); }
+.note-round-view { clip-path: ellipse(var(--round-width) var(--round-height) at 50.4% 33%); }
+.note-round-view .note-art-image {
+  transform: translateY(var(--round-shift)) scale(var(--round-scale));
+  transform-origin: 50.4% 50%;
+}
+.note-wood-portal {
+  position: absolute;
+  top: 30.6%;
+  left: 40.5%;
+  width: 18.35%;
+  height: 37.7%;
+  overflow: hidden;
+  border-radius: 6% 6% 5% 5%;
+  opacity: var(--opening);
+}
+.note-wood-portal .note-art-image { background-size: cover; transform: scale(var(--entry-scale)); }
+.note-light-gap { opacity: var(--light-gap); }
+.note-light-brass { opacity: var(--light-brass); }
+.note-stroke-sprite {
+  position: absolute;
+  top: var(--stroke-top);
+  left: var(--stroke-left);
+  width: var(--stroke-width);
+  height: var(--stroke-height);
+  background-size: 400% 400%;
+  background-repeat: no-repeat;
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent),
+    linear-gradient(180deg, transparent, #000 3%, #000 97%, transparent);
+  mask-composite: intersect;
+}
+[data-note-scene="garden"] {
+  --stroke-top: 14.6296%;
+  --stroke-left: 21.0417%;
+  --stroke-width: 53.0208%;
+  --stroke-height: 80.3704%;
+}
+[data-note-scene="quiet"] {
+  --stroke-top: 8.7037%;
+  --stroke-left: 27.3958%;
+  --stroke-width: 60.2083%;
+  --stroke-height: 82.963%;
+}
 .note-copy { grid-area: copy; min-width: 0; }
 .note-copy > p { margin: 0 0 8px; }
 .note-revisit { min-height: 44px; padding: 6px 0; color: var(--gold); text-decoration: underline; text-underline-offset: 4px; font-size: 14px; }
@@ -466,4 +544,9 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
 }
 @media (max-width: 360px) and (orientation: portrait) {
   .note-plate { aspect-ratio: 1; }
+}
+@media (max-width: 639px) and (orientation: portrait) and (prefers-reduced-motion: no-preference) {
+  .note-plate[data-note-scene] { aspect-ratio: 4 / 3; --note-art-width: 133.3333%; }
+  .note-plate[data-note-scene="light"] { aspect-ratio: 3 / 2; --note-art-width: 118.5185%; }
+  .note-plate[data-note-scene="light"] .note-motion-art { left: 42%; }
 }

@@ -1,3 +1,5 @@
+import { watchNoteScenes } from './note-scenes.js';
+
 const traceWindows = {
   roof: [0.08, 0.46],
   frame: [0.19, 0.58],
@@ -7,6 +9,7 @@ const traceWindows = {
 const clampNoteProgress = value => Math.max(0, Math.min(1, value));
 
 export function watchNoteMotion() {
+  watchNoteScenes();
   const preference = matchMedia('(prefers-reduced-motion: no-preference) and (min-height: 480px)');
   const root = document.documentElement;
   const runway = document.querySelector('.notes-transition');
