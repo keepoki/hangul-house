@@ -512,14 +512,15 @@ html:has(.structure-dialog[open]) { overflow: hidden; }
   background-size: 400% 400%;
   background-repeat: no-repeat;
   mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent),
-    linear-gradient(180deg, transparent, #000 3%, #000 97%, transparent);
+    linear-gradient(180deg, transparent, #000 3%, #000 var(--stroke-bottom-feather, 97%), transparent);
   mask-composite: intersect;
 }
 [data-note-scene="garden"] {
-  --stroke-top: 14.6296%;
-  --stroke-left: 21.0417%;
-  --stroke-width: 53.0208%;
-  --stroke-height: 80.3704%;
+  --stroke-top: 13.5185%;
+  --stroke-left: 19.7917%;
+  --stroke-width: 55.2083%;
+  --stroke-height: 86.4815%;
+  --stroke-bottom-feather: 100%;
 }
 [data-note-scene="quiet"] {
   --stroke-top: 8.7037%;

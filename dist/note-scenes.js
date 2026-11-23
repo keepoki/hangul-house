@@ -5,11 +5,13 @@ export function noteScrollProgress(top, height) {
   return height > 0 ? clampRoomProgress((0.8 * height - top) / (0.62 * height)) : 0;
 }
 
-export function strokeSpritePosition(progress) {
-  // The still is frame 0. Subsequent poses occupy a 4 × 4 sprite.
-  const tile = Math.round(clampRoomProgress(progress) * 16) - 1;
-  if (tile < 0) return null;
-  return (tile % 4 * 100 / 3) + '% ' + (Math.floor(tile / 4) * 100 / 3) + '%';
+export function strokeSpritePosition(progress, columns = 4, loop = false) {
+  const poses = columns * columns;
+  const frame = Math.round(clampRoomProgress(progress) * poses);
+  if (frame === 0 || (loop && frame === poses)) return null;
+  const tile = frame - 1;
+  const step = columns - 1;
+  return (tile % columns * 100 / step) + '% ' + (Math.floor(tile / columns) * 100 / step) + '%';
 }
 
 const roomEffects = {
@@ -58,14 +60,19 @@ async function prepareNoteArt(art) {
 
 export function watchNoteScenes() {
   const preference = matchMedia('(prefers-reduced-motion: no-preference)');
-  const plates = new Map([...document.querySelectorAll('[data-note-scene]')].map(plate => [
-    plate, {
+  const plates = new Map([...document.querySelectorAll('[data-note-scene]')].map(plate => {
+    const sprite = plate.querySelector('[data-note-sprite]');
+    const columns = Number(sprite?.dataset.noteColumns ?? 4);
+    if (sprite && columns !== 4) sprite.style.backgroundSize = (columns * 100) + '% ' + (columns * 100) + '%';
+    return [plate, {
       art: plate.querySelector('.note-motion-art'),
-      sprite: plate.querySelector('[data-note-sprite]'),
+      sprite,
+      columns,
+      loop: sprite?.hasAttribute('data-note-loop'),
       scene: plate.dataset.noteScene,
       previous: -1
-    }
-  ]));
+    }];
+  }));
   const nearby = new Set();
   let frame = 0;
 
@@ -79,7 +86,7 @@ export function watchNoteScenes() {
       if (progress === state.previous) continue;
       state.previous = progress;
       if (state.sprite) {
-        const position = strokeSpritePosition(progress);
+        const position = strokeSpritePosition(progress, state.columns, state.loop);
         state.sprite.hidden = position === null;
         if (position !== null) state.sprite.style.backgroundPosition = position;
       } else {
