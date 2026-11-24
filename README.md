@@ -4,7 +4,7 @@
 
 글자로 지은 집을 한 페이지에서 걸어 보는 온라인 전시입니다. 스크롤을 내리면 한글로 지은 건축관에서 출발해 글자 여섯 개를 만나고, 다시 돌아온 집의 정면에서 각 글자가 어디에 쓰였는지 봅니다.
 
-[공개 전시 관람하기](https://hangul-house.mossyrobin64.chatgpt.site) · [출품 버전 소스 보기](https://github.com/keepoki/hangul-house/tree/codex/adaptive-gallery)
+[공개 전시 관람하기](https://hangul-house.mossyrobin64.chatgpt.site) · [GitHub 저장소](https://github.com/keepoki/hangul-house)
 
 ![ㄱ 처마, ㅅ 지붕, ㅁ 입구, ㅇ 창이 보이는 한글 건축관의 정면](dist/assets/gallery/finale.jpg)
 
@@ -36,7 +36,7 @@
 Git과 Node.js, npm이 필요합니다. 외부 패키지를 따로 설치할 필요 없이 아래 명령으로 실행할 수 있습니다.
 
 ```sh
-git clone --branch codex/adaptive-gallery https://github.com/keepoki/hangul-house.git
+git clone https://github.com/keepoki/hangul-house.git
 cd hangul-house
 npm run dev
 ```
